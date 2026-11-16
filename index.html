@@ -80,7 +80,7 @@
   /* 본문 배치: 왼쪽 목차 + 오른쪽 카탈로그 */
   .layout {
     max-width: 1120px; margin: 0 auto; padding: 0 24px 96px;
-    display: grid; grid-template-columns: 190px 1fr; gap: 40px;
+    display: grid; grid-template-columns: 190px minmax(0, 1fr); gap: 40px;
   }
   .nav { position: sticky; top: 24px; align-self: start; }
   .nav ul { list-style: none; margin: 0; padding: 0; }
@@ -114,7 +114,9 @@
     margin: 0 0 16px;
   }
   section h2 small { font-size: 0.9rem; font-weight: 400; color: var(--muted); }
-  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 20px; }
+  .grid { display: flex; gap: 20px; overflow-x: auto; scroll-snap-type: x proximity; padding: 4px 4px 14px; margin: -4px -4px 0; overscroll-behavior-x: contain; scrollbar-width: thin; scrollbar-color: var(--line) transparent; }
+  .grid > .card { flex: 0 0 260px; scroll-snap-align: start; }   /* 카드가 많아지면 옆으로 넘겨서 봄 */
+  main { min-width: 0; }
 
   /* 카드 */
   .card {
@@ -165,7 +167,7 @@
   /* 모바일: 목차가 상단 가로 막대로 바뀜 */
   @media (max-width: 760px) {
     .top { padding-top: 40px; }
-    .layout { grid-template-columns: 1fr; gap: 8px; }
+    .layout { grid-template-columns: minmax(0, 1fr); gap: 8px; }
     .nav {
       position: sticky; top: 0; z-index: 10; margin: 0 -24px; padding: 8px 24px;
       background: var(--bg); border-bottom: 1px solid var(--line); overflow-x: auto;
