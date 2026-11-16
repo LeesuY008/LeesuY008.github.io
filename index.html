@@ -133,6 +133,7 @@
     position: absolute; inset: 0; display: grid; place-items: center;
     font-size: 2.6rem; font-weight: 800; color: var(--accent); opacity: .55;
   }
+  .thumb img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: top; }
   .body { padding: 14px 16px 16px; display: flex; flex-direction: column; gap: 6px; flex: 1; }
   .body h3 { margin: 0; font-size: 1.02rem; font-weight: 700; letter-spacing: -0.01em; }
   .body h3 a { color: inherit; text-decoration: none; }
@@ -224,15 +225,14 @@
 const items = [
   /* ---------- 프로젝트 ---------- */
   { title: "HR 통합 시스템 만들어보기", desc: "인사(HR) 시스템 만들어보기", href: "hr-system.html#info",
-    category: "프로젝트", tags: ["HR"], preview: false },
+    category: "프로젝트", tags: ["HR"], image: "images/hr-system.png", preview: false },
   { title: "한국 온라인 게임 점유율", desc: "대한민국 온라인 게임 정보 확인해보기", href: "Gameinfo.html",
-    category: "프로젝트", tags: ["게임"], preview: false },
-
+    category: "프로젝트", tags: ["게임"], image: "images/game-info.png", preview: false },
   /* ---------- 학습 자료 ---------- */
   { title: "첫 번째 페이지 제목", desc: "한 줄 설명을 적습니다.", href: "page1.html",
-    category: "학습 자료", tags: ["Python"], date: "2026.11", preview: false },
+    category: "학습 자료", tags: ["Python"], date: "2026.11", image: "images/page1.png", preview: false },
   { title: "두 번째 페이지 제목", desc: "한 줄 설명을 적습니다.", href: "page2.html",
-    category: "학습 자료", tags: ["통계"], date: "2026.11", preview: false }
+    category: "학습 자료", tags: ["통계"], date: "2026.11", image: "images/page2.png", preview: false }
 ];
 /* ===================================================== */
 
@@ -258,9 +258,11 @@ $("#catalog").innerHTML = categories.map((cat, i) => {
   const cards = items.map((x, idx) => ({ x, idx })).filter((o) => o.x.category === cat).map(({ x, idx }) => `
     <article class="card" data-idx="${idx}">
       <div class="thumb">
-        ${x.preview
-          ? `<iframe src="${esc(x.href)}" loading="lazy" sandbox="allow-scripts" tabindex="-1" aria-hidden="true" title=""></iframe>`
-          : `<div class="ph" aria-hidden="true">${esc(x.title.charAt(0))}</div>`}
+        ${x.image
+          ? `<img src="${esc(x.image)}" alt="${esc(x.title)} 미리보기" loading="lazy" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'ph',textContent:this.alt.charAt(0)}))">`
+          : x.preview
+            ? `<iframe src="${esc(x.href)}" loading="lazy" sandbox="allow-scripts" tabindex="-1" aria-hidden="true" title=""></iframe>`
+            : `<div class="ph" aria-hidden="true">${esc(x.title.charAt(0))}</div>`}
       </div>
       <div class="body">
         <h3><a href="${esc(x.href)}">${esc(x.title)}</a></h3>
