@@ -1,3 +1,4 @@
-Hello!  
-Nice to meet you :)  
-Show my Github!
+안녕하세요!  
+이 곳은 이수의 Github 입니다 :)  
+궁금한건 다 물어보세요  
+대답할 수 있으면 하겠음 ㅋ
