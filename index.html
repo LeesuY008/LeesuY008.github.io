@@ -222,6 +222,10 @@
    category : 분류 이름 (같은 이름끼리 한 구역으로 묶임)
    tags     : 태그 목록 (상단 필터 버튼으로 사용됨)
    date     : 표시할 날짜 (선택)
+   image    : 카드 사진 경로 (예: "images/project5.png")
+              → 이 이름으로 images 폴더에 사진만 올리면 코드 수정 없이 바로 반영됨
+              → 확장자는 png, jpg, jpeg, webp, gif 아무거나 가능 (이름만 같으면 됨)
+              → 사진이 없으면 제목 첫 글자가 대신 표시됨
    preview  : true면 실제 페이지가 카드에 미리보기로 뜸, false면 글자 표시
    ===================================================== */
 const items = [
@@ -235,9 +239,9 @@ const items = [
   { title: "대한민국 창폐업률", desc: "대한민국 창폐업률 확인해보기", href: "startup-map.html",
     category: "프로젝트", tags: ["지도"], image: "images/mappoint.png", preview: false },
   { title: "프로젝트 추가 예정 5", desc: "추가될 페이지 자리입니다.", href: "#all",
-    category: "프로젝트", tags: ["준비중"], preview: false },
+    category: "프로젝트", tags: ["준비중"], image: "images/project5.png", preview: false },
   { title: "프로젝트 추가 예정 6", desc: "추가될 페이지 자리입니다.", href: "#all",
-    category: "프로젝트", tags: ["준비중"], preview: false },
+    category: "프로젝트", tags: ["준비중"], image: "images/project6.png", preview: false },
   /* ---------- 학습 자료 ---------- */
   /* ---------- 학습 자료 ---------- */
   { title: "함수·벡터 그래프", desc: "함수와 벡터 그래프 그려보기", href: "Drawgraf.html",
@@ -245,19 +249,34 @@ const items = [
   { title: "두 번째 페이지 제목", desc: "한 줄 설명을 적습니다.", href: "page2.html",
     category: "학습 자료", tags: ["통계"], date: "2026.11", image: "images/page2.png", preview: false },
   { title: "학습 자료 추가 예정 3", desc: "추가될 페이지 자리입니다.", href: "#all",
-    category: "학습 자료", tags: ["준비중"], preview: false },
+    category: "학습 자료", tags: ["준비중"], image: "images/study3.png", preview: false },
   { title: "학습 자료 추가 예정 4", desc: "추가될 페이지 자리입니다.", href: "#all",
-    category: "학습 자료", tags: ["준비중"], preview: false },
+    category: "학습 자료", tags: ["준비중"], image: "images/study4.png", preview: false },
   { title: "학습 자료 추가 예정 5", desc: "추가될 페이지 자리입니다.", href: "#all",
-    category: "학습 자료", tags: ["준비중"], preview: false },
+    category: "학습 자료", tags: ["준비중"], image: "images/study5.png", preview: false },
   { title: "학습 자료 추가 예정 6", desc: "추가될 페이지 자리입니다.", href: "#all",
-    category: "학습 자료", tags: ["준비중"], preview: false }
+    category: "학습 자료", tags: ["준비중"], image: "images/study6.png", preview: false }
 ];
 /* ===================================================== */
 
 const $ = (s) => document.querySelector(s);
 const esc = (t) => String(t ?? "").replace(/[&<>"']/g, (c) => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
 const slug = (name, i) => "cat-" + i;
+
+/* 사진을 못 찾으면 같은 이름의 다른 확장자를 차례로 시도하고, 끝까지 없으면 첫 글자로 대체 */
+const IMG_EXT = ["png", "jpg", "jpeg", "webp", "gif", "PNG", "JPG", "JPEG"];
+function nextImage(img) {
+  const src = img.getAttribute("src");
+  const base = img.dataset.base ?? (img.dataset.base = src.replace(/\.[^./]+$/, ""));
+  const tried = (img.dataset.tried ? img.dataset.tried.split(",") : [src.slice(base.length + 1)]);
+  const ext = IMG_EXT.find((e) => !tried.includes(e));
+  if (ext) {
+    img.dataset.tried = [...tried, ext].join(",");
+    img.src = base + "." + ext;
+  } else {
+    img.replaceWith(Object.assign(document.createElement("div"), { className: "ph", textContent: img.alt.charAt(0) }));
+  }
+}
 
 const categories = [...new Set(items.map((x) => x.category))];
 const allTags = [...new Set(items.flatMap((x) => x.tags || []))];
@@ -278,7 +297,7 @@ $("#catalog").innerHTML = categories.map((cat, i) => {
     <article class="card" data-idx="${idx}">
       <div class="thumb">
         ${x.image
-          ? `<img src="${esc(x.image)}" alt="${esc(x.title)} 미리보기" loading="lazy" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'ph',textContent:this.alt.charAt(0)}))">`
+          ? `<img src="${esc(x.image)}" alt="${esc(x.title)} 미리보기" loading="lazy" onerror="nextImage(this)">`
           : x.preview
             ? `<iframe src="${esc(x.href)}" loading="lazy" sandbox="allow-scripts" tabindex="-1" aria-hidden="true" title=""></iframe>`
             : `<div class="ph" aria-hidden="true">${esc(x.title.charAt(0))}</div>`}
