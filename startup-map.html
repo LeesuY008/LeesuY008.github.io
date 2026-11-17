@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>South Korea Business Startup &amp; Closure Status</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@500&amp;display=swap" rel="stylesheet">
+<style>
+  :root { --bg:#fbf7ee; --card:#fffdf8; --ink:#2b2a27; --muted:#7a756b; --line:#e6dfd0; --ac:#2f8f7a; }
+  * { box-sizing:border-box; margin:0; }
+  body { background:var(--bg); color:var(--ink); line-height:1.5; padding:20px 18px 36px;
+    font-family:"Pretendard","Noto Sans KR","Apple SD Gothic Neo",system-ui,sans-serif; }
+  .wrap { max-width:1200px; margin:0 auto; }
+  header { display:flex; flex-wrap:wrap; align-items:flex-end; justify-content:space-between; gap:12px; margin-bottom:14px; }
+  h1 { font-size:1.35rem; letter-spacing:-.02em; }
+  h1 small { display:block; font-size:.8rem; font-weight:400; color:var(--muted); }
+  .rt { display:flex; flex-direction:column; align-items:flex-end; gap:6px; }
+  .upd { font-size:.76rem; color:var(--muted); text-align:right; }
+  .upd b { color:var(--ink); font-weight:600; } .upd span { cursor:help; }
+  button, select, input { font:inherit; color:inherit; }
+  .seg { display:inline-flex; border:1px solid var(--line); border-radius:10px; overflow:hidden; background:var(--card); }
+  .seg button { border:0; background:none; padding:9px 18px; cursor:pointer; color:var(--muted); }
+  .seg button[aria-pressed="true"] { background:var(--ink); color:#fff; }
+  button:focus-visible, select:focus-visible, input:focus-visible, a:focus-visible { outline:2px solid var(--ac); outline-offset:2px; }
+  .main { display:grid; grid-template-columns:minmax(0,1fr) 340px; gap:16px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:14px; position:relative; }
+  .crumb { font-size:.88rem; color:var(--muted); min-height:24px; }
+  .crumb button { border:0; background:none; cursor:pointer; padding:2px 4px; color:var(--ink); text-decoration:underline; text-underline-offset:3px; }
+  #map { width:100%; height:min(78vh,760px); display:block; border-radius:12px; background:linear-gradient(180deg,#dff1fc 0%,#c4e6f6 45%,#9fd0ea 100%); }
+  #msg { position:absolute; inset:90px 20px auto; text-align:center; color:var(--muted); font-size:.9rem; z-index:2; }
+  .m { stroke:#d9cfb6; stroke-width:.6px; vector-effect:non-scaling-stroke; cursor:pointer; transition:fill .35s, opacity .35s; }
+  .m:hover { stroke:var(--ink); stroke-width:1.6px; }
+  .m.dim { opacity:.75; } .m.on { stroke:var(--ink); stroke-width:2.2px; }
+  #gb path { fill:none; stroke:#1f2a33; stroke-width:1.4px; stroke-linejoin:round; vector-effect:non-scaling-stroke; pointer-events:none; }
+  #ov { pointer-events:none; }
+  .oz { transform-box:fill-box; transform-origin:center; transition:transform .2s ease; filter:drop-shadow(0 3px 4px rgba(40,30,10,.3)); }
+  .om { stroke:#d9cfb6; stroke-width:.6px; vector-effect:non-scaling-stroke; }
+  .om.hl { stroke:var(--ink); stroke-width:1.8px; }
+  .ob { fill:none; stroke-width:1.8px; vector-effect:non-scaling-stroke; }
+  #map text { pointer-events:none; text-anchor:middle; dominant-baseline:central; fill:var(--ink); font-family:inherit;
+    paint-order:stroke; stroke:rgba(251,247,238,.85); stroke-width:2.5px; stroke-linejoin:round; }
+  .legend { display:flex; align-items:center; gap:8px; font-size:.8rem; color:var(--muted); margin-top:8px; flex-wrap:wrap; }
+  .legend i { flex:0 0 160px; height:10px; border-radius:5px; }
+  .legend u { width:12px; height:10px; background:#e4dccb; border-radius:2px; display:inline-block; text-decoration:none; }
+  #map text.sea, #map.dark text.sea { font-family:"Dancing Script","Snell Roundhand","Segoe Script","Brush Script MT","Apple Chancery","URW Chancery L",cursive; font-style:italic; font-size:16px;
+    fill:#2f6f98; stroke:rgba(255,255,255,.6); stroke-width:2px; letter-spacing:.06em; opacity:.9; }
+  #tip { position:fixed; pointer-events:none; width:290px; background:#f1f5fb; color:#1d1f27; border:1px solid #cdd6e6; border-radius:12px; padding:11px 14px; opacity:0; transition:opacity .12s; z-index:9;
+    font-family:inherit; font-size:.68rem; line-height:1.45; box-shadow:0 8px 24px rgba(20,30,60,.2); }
+  #tip .tt { margin-bottom:6px; font-weight:600; }
+  #tip .box { border:1px solid #1d1f27; padding:6px 10px; margin-bottom:8px; }
+  #tip .box div { display:flex; justify-content:space-between; font-size:.8rem; } #tip .box small { font-size:.66rem; }
+  #tip .up { color:#d63c3c; } #tip .dn { color:#2f6fd6; }
+  #tip .cw { display:flex; gap:8px; align-items:flex-start; } #tip .rc { flex:1; min-width:0; }
+  #tip .lg { display:flex; align-items:center; gap:4px; font-size:.64rem; }
+  #tip .biz { margin-top:14px; line-height:1.3; } #tip .biz small { display:block; font-size:.62rem; color:#4a5060; margin-top:3px; }
+  #tip .biz b { display:block; font-size:.98rem; font-weight:800; }
+  #tip svg { display:block; overflow:visible; }
+  .kpis { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin:10px 0 14px; }
+  .kpi { border:1px solid var(--line); border-radius:10px; padding:8px 10px; }
+  .kpi small { color:var(--muted); font-size:.72rem; } .kpi strong { display:block; font-size:1.05rem; }
+  h2 { font-size:1.05rem; } h3 { font-size:.88rem; margin:12px 0 6px; }
+  .bar { display:grid; grid-template-columns:92px 1fr 46px; align-items:center; gap:8px; font-size:.82rem; margin:2px 0; width:100%; border:0; background:none; padding:3px 4px; border-radius:6px; text-align:left; cursor:default; }
+  button.bar { cursor:pointer; } button.bar:hover, .bar[aria-current] { background:#f1ebdb; }
+  .more { border:1px dashed var(--line); background:none; border-radius:8px; padding:5px 10px; margin-top:6px; cursor:pointer; font-size:.8rem; color:var(--muted); }
+  .bar div { height:8px; background:#efe8d8; border-radius:4px; overflow:hidden; }
+  .bar i { display:block; height:100%; background:var(--ac); border-radius:4px; }
+  .bar span { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .bar em { font-style:normal; text-align:right; color:var(--muted); }
+  .top { list-style:none; padding:0; font-size:.86rem; }
+  .top li { display:flex; justify-content:space-between; padding:3px 0; border-bottom:1px dashed var(--line); }
+  .top button { border:0; background:none; cursor:pointer; padding:0; text-align:left; } .top button:hover { text-decoration:underline; }
+  .empty { font-size:.86rem; color:var(--muted); margin:12px 0; }
+  .src { margin-top:22px; padding-top:14px; border-top:1px solid var(--line); font-size:.82rem; color:var(--muted); }
+  .src h4 { font-size:.86rem; color:var(--ink); margin-bottom:6px; }
+  .src ul { padding-left:18px; } .src li { margin:2px 0; }
+  .src a { color:var(--ink); text-underline-offset:3px; } .src a:hover { color:var(--ac); }
+  .src p { margin-top:8px; font-size:.78rem; }
+  .gsw { width:12px; height:12px; border-radius:3px; display:inline-block; vertical-align:-1px; margin-right:4px; }
+  #map.dark text { fill:#fff; stroke:rgba(15,10,35,.75); }
+  .hl { display:flex; align-items:center; gap:12px; }
+  .mb { width:42px; height:42px; flex:0 0 auto; border:1px solid var(--line); background:var(--card); border-radius:10px; cursor:pointer; display:grid; place-items:center; }
+  .scrim { position:fixed; inset:0; background:rgba(30,25,15,.35); opacity:0; pointer-events:none; transition:opacity .25s; z-index:19; border:0; }
+  .scrim.on { opacity:1; pointer-events:auto; }
+  #menu { position:fixed; top:0; left:0; bottom:0; width:min(360px,88vw); background:var(--card); border-right:1px solid var(--line); z-index:20; display:flex; flex-direction:column;
+    transform:translateX(-102%); visibility:hidden; transition:transform .25s, visibility 0s .25s; box-shadow:8px 0 30px rgba(40,30,10,.15); }
+  #menu.open { transform:none; visibility:visible; transition:transform .25s; }
+  .mh { display:flex; justify-content:space-between; align-items:center; padding:14px 16px; border-bottom:1px solid var(--line); }
+  .mh button { border:0; background:none; font-size:1.1rem; cursor:pointer; }
+  .mtabs { display:flex; border-bottom:1px solid var(--line); }
+  .mtabs button { flex:1; border:0; background:none; padding:10px; cursor:pointer; color:var(--muted); border-bottom:2px solid transparent; }
+  .mtabs button[aria-selected="true"] { color:var(--ink); border-bottom-color:var(--ink); font-weight:600; }
+  .mbody { padding:14px 16px; overflow:auto; flex:1; }
+  #mq { width:100%; height:38px; border:1px solid var(--line); border-radius:10px; background:var(--bg); padding:0 12px; }
+  .ml, .rk { list-style:none; padding:0; margin:8px 0; }
+  .ml li button { width:100%; text-align:left; border:0; background:none; padding:8px; border-radius:8px; cursor:pointer; font-size:.9rem; }
+  .ml li button:hover, .rk li button:hover { background:#f1ebdb; }
+  .ml em { font-style:normal; font-size:.7rem; color:var(--muted); border:1px solid var(--line); border-radius:6px; padding:0 6px; margin-right:8px; }
+  .ml .none { color:var(--muted); font-size:.84rem; padding:6px 8px; }
+  .hh { display:flex; justify-content:space-between; align-items:center; font-size:.84rem; font-weight:600; margin-top:14px; }
+  .hh button { border:0; background:none; color:var(--muted); font-size:.78rem; cursor:pointer; text-decoration:underline; }
+  .fh { display:flex; align-items:center; gap:6px; font-size:.84rem; font-weight:600; margin:18px 0 6px; }
+  .fh img { width:20px; height:20px; }
+  .mbody label { display:block; font-size:.84rem; margin:8px 0; }
+  .mbody select { width:100%; height:34px; border:1px solid var(--line); border-radius:8px; background:var(--bg); padding:0 8px; margin-top:4px; }
+  .rk li button { display:flex; justify-content:space-between; width:100%; border:0; background:none; padding:6px; cursor:pointer; border-radius:6px; font-size:.88rem; }
+  .ref2 { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin:8px 0; }
+  .ref2 div { border:1px solid var(--line); border-radius:10px; padding:8px 10px; } .ref2 small { color:var(--muted); font-size:.72rem; } .ref2 strong { display:block; font-size:1.1rem; }
+  @media (max-width:900px) { .main { grid-template-columns:1fr; } #map { height:62vh; } .rt { align-items:flex-start; } .upd { text-align:left; } }
+  @media (prefers-reduced-motion:reduce) { * { transition:none !important; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="hl">
+      <button class="mb" id="mb" aria-label="메뉴 열기" aria-expanded="false" aria-controls="menu">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+      </button>
+      <h1>South Korea Business Startup &amp; Closure Status<small>지역을 클릭하면 확대되고, 시·군·구를 눌러 상세를 볼 수 있어요</small></h1>
+    </div>
+    <div class="rt">
+      <div class="upd" id="upd"></div>
+      <div class="seg" role="group" aria-label="지표">
+        <button data-m="s" aria-pressed="true">창업률</button>
+        <button data-m="c" aria-pressed="false">폐업률</button>
+      </div>
+    </div>
+  </header>
+
+  <div class="main">
+    <div class="card">
+      <div class="crumb" id="crumb"></div>
+      <div id="msg">지도를 불러오는 중…</div>
+      <svg id="map" viewBox="0 0 400 600" role="img" aria-label="대한민국 시·군·구 창업·폐업 지도">
+        <rect id="bgr" x="-500" y="-500" width="2000" height="2000" fill="transparent"/>
+        <g id="gm"></g><g id="gb"></g><g id="ov"></g><g id="gl"></g>
+      </svg>
+      <div class="legend" id="lscale"><span id="lmin"></span><i id="lbar"></i><span id="lmax"></span><span id="lname"></span><u></u><span>자료 없음</span></div>
+      <div class="legend" id="lgrp"></div>
+    </div>
+    <aside class="card" id="panel"></aside>
+  </div>
+
+  <footer class="src">
+    <h4>자료 출처</h4>
+    <ul>
+      <li><a href="https://kosis.kr/statisticsList/statisticsListIndex.do?parentId=J2.1&amp;vwcd=MT_ZTITLE&amp;menuId=M_01_01" target="_blank" rel="noopener noreferrer">국가통계포털(KOSIS)</a> — 기업·업종별 통계</li>
+      <li><a href="https://mods.go.kr/board.es?act=view&amp;bid=11469&amp;list_no=447531&amp;mainXml=Y&amp;mid=a10301010000" target="_blank" rel="noopener noreferrer">국가데이터처(구 통계청) 「2025년 기업생멸행정통계(잠정) 결과」 보도자료</a> (2026.10.22.)</li>
+      <li><a href="https://github.com/southkorea/southkorea-maps" target="_blank" rel="noopener noreferrer">southkorea-maps</a> — 통계청(KOSTAT) 행정구역 경계(2018) 지도 데이터</li>
+    </ul>
+    <p>창업률은 ‘신생률’, 폐업률은 ‘소멸률’(활동기업 대비 비율)을 뜻하며, 소멸기업은 1년 늦게 집계됩니다. 집계된 통계만 사용하고 개인·사업자 식별 정보는 포함하지 않습니다.
+      국가데이터처 저작물은 <a href="http://www.kogl.or.kr/info/license.do" target="_blank" rel="noopener noreferrer">공공누리 제3유형</a>(출처표시·변경금지) 조건으로 이용합니다.</p>
+  </footer>
+</div>
+<div id="tip"></div>
+<button class="scrim" id="scrim" aria-label="메뉴 닫기" tabindex="-1"></button>
+<aside id="menu" aria-hidden="true" aria-label="메뉴">
+  <div class="mh"><strong>메뉴</strong><button id="mclose" aria-label="메뉴 닫기">✕</button></div>
+  <div class="mtabs" role="tablist"><button data-tab="search" role="tab" aria-selected="true">검색</button><button data-tab="status" role="tab" aria-selected="false">현황</button></div>
+  <section class="mbody" id="tab-search">
+    <input id="mq" placeholder="지역·업종 검색 (예: 수원, 숙박)" autocomplete="off" aria-label="지역·업종 검색">
+    <ul class="ml" id="mres"></ul>
+    <div class="hh"><span>검색 기록</span><button id="hclear">모두 지우기</button></div>
+    <ul class="ml" id="hlist"></ul>
+    <div class="fh"><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABgAAAAYCAYAAADgdz34AAAACXBIWXMAAAsTAAALEwEAmpwYAAAAuUlEQVR4nO2UMQoCMRBFH9qJHsEjWIinsBC8hxaeQwsPsoW3sJA9g+DeYLdUITLyi7DImo0LCuZBisy8n0mTQKIlrqP1vQHGQVL23IWRKWPZt4yBSoFFgD+XWykbxEahCzBs8AbAWa5lgukDuYLbBm8nJ1emFTPgDtyA6Yv+BLjKMTeKvW54qt2wBxzVMyeaEVDooJVXX6tWyPmIpQ4rvVqpmvU6wdUeUNCDSgNcGuDjYr7lnxrwxzwAeldtFoE+pyMAAAAASUVORK5CYII=" alt="">필터</div>
+    <label>업종<select id="fi"></select></label>
+    <label>연도<select id="fy"></select></label>
+  </section>
+  <section class="mbody" id="tab-status" hidden></section>
+</aside>
+
+<script>
+/* ===== 1. 지도 데이터 (통계청 KOSTAT 2018 행정구역 경계) ===== */
+const BASES = ['https://cdn.jsdelivr.net/gh/southkorea/southkorea-maps@master/kostat/2018/json/',
+               'https://raw.githubusercontent.com/southkorea/southkorea-maps/master/kostat/2018/json/', './'];
+const MFILES = ['skorea-municipalities-2018-topo-simple.json','skorea-municipalities-2018-geo.json'];
+const PFILES = ['skorea-provinces-2018-topo-simple.json','skorea-provinces-2018-geo.json'];
+async function load(files) {
+  for (const f of files) for (const b of BASES) { try { const r = await fetch(b+f); if (r.ok) return await r.json(); } catch (e) {} }
+  throw new Error('load failed');
+}
+function topoFeatures(t) {
+  const q = !!t.transform, [sx,sy] = q ? t.transform.scale : [1,1], [tx,ty] = q ? t.transform.translate : [0,0];
+  const arcs = t.arcs.map(a => { let x = 0, y = 0; return a.map(([dx,dy]) => { if (q) { x += dx; y += dy; return [x*sx+tx, y*sy+ty]; } return [dx,dy]; }); });
+  const arc = i => i < 0 ? arcs[~i].slice().reverse() : arcs[i];
+  const ring = r => r.flatMap((i,k) => { const a = arc(i); return k ? a.slice(1) : a; });
+  const obj = t.objects[Object.keys(t.objects)[0]], gs = obj.type === 'GeometryCollection' ? obj.geometries : [obj];
+  return gs.map(g => ({ properties:g.properties, geometry:{ type:g.type, coordinates: g.type==='Polygon' ? g.arcs.map(ring) : g.arcs.map(p => p.map(ring)) } }));
+}
+const feats = j => j.type === 'Topology' ? topoFeatures(j) : j.features;
+const pj = ([lo,la]) => [((lo>130.3 ? lo-1.4 : lo)-124.5)*80.5, (38.7-la)*100];
+const GB = [1e9,1e9,-1e9,-1e9];
+function toPath(g) {
+  const polys = g.type === 'Polygon' ? [g.coordinates] : g.coordinates; let d = '', big = null;
+  for (const poly of polys) poly.forEach((ring, ri) => {
+    const q = []; ring.forEach(p => { const c = pj(p), l = q[q.length-1]; if (!l || Math.hypot(c[0]-l[0], c[1]-l[1]) > .25) q.push(c); });
+    if (q.length < 3) return;
+    q.forEach(c => { GB[0]=Math.min(GB[0],c[0]); GB[1]=Math.min(GB[1],c[1]); GB[2]=Math.max(GB[2],c[0]); GB[3]=Math.max(GB[3],c[1]); });
+    d += 'M' + q.map(c => c[0].toFixed(1)+' '+c[1].toFixed(1)).join('L') + 'Z';
+    if (ri === 0) {
+      let A = 0, cx = 0, cy = 0;
+      q.forEach((p,i) => { const n = q[(i+1)%q.length], cr = p[0]*n[1]-n[0]*p[1]; A += cr; cx += (p[0]+n[0])*cr; cy += (p[1]+n[1])*cr; });
+      A /= 2; if (A) { cx /= 6*A; cy /= 6*A; } else { cx = q[0][0]; cy = q[0][1]; }
+      const a = Math.abs(A);
+      if (!big || a > big.a) { const xs = q.map(p=>p[0]), ys = q.map(p=>p[1]); big = { a, c:[cx,cy], b:[Math.min(...xs),Math.min(...ys),Math.max(...xs),Math.max(...ys)] }; }
+    }
+  });
+  return { d, big };
+}
+const PN = { '11':['서울특별시','서울'],'21':['부산광역시','부산'],'22':['대구광역시','대구'],'23':['인천광역시','인천'],'24':['광주광역시','광주'],
+  '25':['대전광역시','대전'],'26':['울산광역시','울산'],'29':['세종특별자치시','세종'],'31':['경기도','경기'],'32':['강원특별자치도','강원'],
+  '33':['충청북도','충북'],'34':['충청남도','충남'],'35':['전북특별자치도','전북'],'36':['전라남도','전남'],'37':['경상북도','경북'],
+  '38':['경상남도','경남'],'39':['제주특별자치도','제주'] };
+const LABEL_SHIFT = { '31':[26,-4] };
+
+/* ===== 2. 통계 데이터: data/startup-data.json (실데이터) → 없으면 샘플 ===== */
+// 국가데이터처 공식 발표 전국 수치 (2025년 기업생멸행정통계 잠정, 2026.10.22.) — 소멸은 2024년 기준
+const REF = { s:{ rate:11.7, n:908000, year:2025 }, c:{ rate:10.1, n:769000, year:2024 } };
+let REAL = null;
+const SAMPLE_IND = ['전체','농림어업','광업','제조업','전기·가스·증기','수도·하수·폐기물','건설업','도·소매업','운수·창고업','숙박·음식점업','정보통신업','금융·보험업','부동산업','전문·과학·기술','사업시설·지원·임대','교육서비스업','보건·사회복지','예술·스포츠·여가','협회·수리·개인서비스'], SAMPLE_AGE = ['20대','30대','40대','50대','60대 이상'];
+let IND = SAMPLE_IND, AGE = SAMPLE_AGE;
+const S = { sel:null, dist:null, m:'s', ind:'전체', year:2025, moreInd:false };
+const LB = { s:{rate:'창업률', cnt:'신생기업 수', ind:'업종별 신생기업 비중', age:'대표자 연령대 (신생기업)'}, c:{rate:'폐업률', cnt:'소멸기업 수', ind:'업종별 소멸기업 비중', age:'대표자 연령대 (소멸기업)'} };
+const KC = {}; // 이름키 → 지역 코드
+const nz = l => { const s = l.reduce((a,b)=>a+b,0); return s ? l.map(x => x/s) : null; };
+async function loadReal() {
+  try { const r = await fetch('./data/startup-data.json', {cache:'no-store'}); if (!r.ok) return null; const j = await r.json(); return j && j.regions ? j : null; }
+  catch (e) { return null; }
+}
+const hs = s => { let h = 2166136261; for (const c of s) { h ^= c.charCodeAt(0); h = Math.imul(h,16777619); } return ((h>>>0)%1000)/1000; };
+const LATEST = { birth:2025, death:2024 };
+const ACT = { n:7748000, year:2025 };   // 2025년 활동기업 774.8만 개 (국가데이터처 공식 발표, 잠정)
+function statSample(key, ind = S.ind, yr = S.year) {
+  if (key==='전국') return ind!=='전체' ? { none:true } : { v:REF[S.m].rate, n:REF[S.m].n, y:REF[S.m].year, ind:null, age:null, act:ACT.n, ay:ACT.year, actInd:null, ref:true };
+  const m = S.m, yy = Math.min(yr, m==='c' ? LATEST.death : LATEST.birth), yf = (yy-2021)*.35*(hs(key+'y')-.35), id = ind==='전체' ? 0 : (hs(key+ind)-.5)*5;
+  const v = m==='s' ? Math.max(3, 7+hs(key+'s')*9+yf+id) : Math.max(3, 6+hs(key+'c')*8-yf*.5+id*.6);
+  const T = Math.round(40000*(.3+hs(key+'n')*1.7)*(key.includes('/') ? .08 : 1)), ai = nz(IND.slice(1).map(k => .4+hs(key+'act'+k)));
+  return { v, n:Math.round(T*v/100), y:yy, ind:nz(IND.slice(1).map(k => .4+hs(key+m+k))), age:nz([.12,.28,.3,.2,.1].map((x,i) => x*(.7+hs(key+m+'a'+i)*.6))),
+    act:T, ay:Math.min(yr, LATEST.birth), actInd:ai, actSel: ind==='전체' ? null : Math.round(T*ai[IND.indexOf(ind)-1]) };
+}
+function statReal(key, ind = S.ind, yr = S.year) {
+  const code = KC[key], r = REAL.regions[code];
+  if (!r || !r.y) return key==='전국' && ind==='전체' ? { v:REF[S.m].rate, n:REF[S.m].n, y:REF[S.m].year, ind:null, age:null, act:ACT.n, ay:ACT.year, actInd:null, ref:true } : { none:true };
+  const m = S.m, y = Math.min(yr, m==='s' ? REAL.latest.birth : REAL.latest.death), d = r.y[y]; if (!d) return { none:true };
+  let a = d.act, b = d.birth, c = d.death;
+  if (ind !== '전체') { const t = d.ind && d.ind[ind]; if (!t) return { none:true }; [a,b,c] = t; }
+  const n = m==='s' ? b : c; if (a==null || n==null || a<=0) return { none:true };
+  const ix = m==='s' ? 1 : 2, grp = m==='s' ? 'birth' : 'death', ay = Math.min(yr, REAL.latest.birth), dA = r.y[ay] || d;
+  return { v:n/a*100, n, y, ind:d.ind ? nz(IND.slice(1).map(k => (d.ind[k] && d.ind[k][ix]) || 0)) : null, age:d.age && d.age[grp] ? nz(d.age[grp].map(x => x||0)) : null,
+    act:dA.act ?? null, ay, actInd:dA.ind ? nz(IND.slice(1).map(k => (dA.ind[k] && dA.ind[k][0]) || 0)) : null,
+    actSel: ind!=='전체' && dA.ind && dA.ind[ind] ? dA.ind[ind][0] : null };
+}
+const stat = (key, ind, yr) => REAL ? statReal(key, ind, yr) : statSample(key, ind, yr);
+
+/* ===== 3. 색상: 창업=밝은 계열, 폐업=어두운 계열 ===== */
+// 7개 권역별 색: 창업률=빨·주·노·초·파 계열 밝은색 / 폐업률=남·보·검 계열 어두운색 (같은 색 안에서는 값이 클수록 진해짐)
+// 시·도별 지정 색상 (채도를 8% 낮춰 차분하게). 세종은 지정이 없어 라벤더로 임시 지정
+const PCOL_RAW = { '31':'#0f9d9a','32':'#10b981','33':'#a3e635','34':'#1e3a8a','35':'#ef4444','36':'#166534','37':'#f97316','38':'#22c55e','39':'#fb9a1b',
+  '11':'#b83227','21':'#ff1493','22':'#8e44ad','23':'#38bdf8','24':'#facc15','25':'#6fe3c1','26':'#0b3fbf','29':'#a78bfa' };
+const rgb2hsl = h => { const [r,g,b] = [1,3,5].map(i => parseInt(h.slice(i,i+2),16)/255), mx = Math.max(r,g,b), mn = Math.min(r,g,b), l = (mx+mn)/2; let H = 0, Sa = 0;
+  if (mx!==mn) { const d = mx-mn; Sa = l>.5 ? d/(2-mx-mn) : d/(mx+mn); H = (mx===r ? (g-b)/d+(g<b?6:0) : mx===g ? (b-r)/d+2 : (r-g)/d+4)*60; } return [H,Sa,l]; };
+const hsl2hex = (H,Sa,l) => { const c = (1-Math.abs(2*l-1))*Sa, x = c*(1-Math.abs((H/60)%2-1)), m = l-c/2;
+  const [r,g,b] = H<60?[c,x,0]:H<120?[x,c,0]:H<180?[0,c,x]:H<240?[0,x,c]:H<300?[x,0,c]:[c,0,x];
+  return '#'+[r,g,b].map(v => Math.round((v+m)*255).toString(16).padStart(2,'0')).join(''); };
+const PCOL = Object.fromEntries(Object.entries(PCOL_RAW).map(([k,v]) => { const [H,Sa,l] = rgb2hsl(v); return [k, hsl2hex(H, Sa*.92, l)]; }));
+const comp = c => { const [H,Sa,l] = rgb2hsl(c); return hsl2hex((H+180)%360, Math.max(Sa,.7), .45); };   // 선택 표시용 보색
+const NONE = '#d2c9b3', IVORY = '#f4eedc';
+const hex = h => [1,3,5].map(i => parseInt(h.slice(i,i+2),16));
+const mix = (a,b,t) => '#'+hex(a).map((v,i) => Math.round(v+(hex(b)[i]-v)*t).toString(16).padStart(2,'0')).join('');
+const colorAt = (v,lo,hi,pc) => { if (v==null) return NONE;
+  const t = hi>lo ? Math.min(1,Math.max(0,(v-lo)/(hi-lo))) : .5, base = PCOL[pc];
+  return S.m==='s' ? mix(mix(base,'#ffffff',.72), base, t) : mix(mix(base,'#000000',.1), mix(base,'#000000',.55), t); };
+const domain = a => a.length ? [Math.min(...a), Math.max(...a)] : [0,0];
+
+/* ===== 4. 지도 구성 ===== */
+const $ = s => document.querySelector(s), svg = $('#map'), tip = $('#tip'), fmt = n => n.toLocaleString('ko-KR');
+const fmtN = n => n >= 10000 ? (n/10000).toFixed(1)+'만 개' : fmt(n)+'개';
+let M = [], P = {}, FULL = [0,0,400,600], vb = FULL.slice(), tgt = FULL, hp = null;
+const mkey = m => PN[m.pc][0]+'/'+m.name;
+const V = (m, ind) => { const s = stat(mkey(m), ind); return s.none ? null : s.v; };
+
+async function init() {
+  REAL = await loadReal();
+  if (REAL) { IND = ['전체', ...(REAL.industries||[])]; AGE = REAL.ageGroups || AGE; S.year = REAL.latest.birth; }
+  setupFilters(); renderUpd();
+  try {
+    const [mj, pjn] = await Promise.all([load(MFILES), load(PFILES).catch(() => null)]);
+    M = feats(mj).filter(f => PN[String(f.properties.code).slice(0,2)]).map(f => {
+      const code = String(f.properties.code), t = toPath(f.geometry);
+      return { code, pc:code.slice(0,2), name:String(f.properties.name).replace(/^(.+?시)(.+구)$/, '$1 $2'), d:t.d, big:t.big };
+    }).filter(m => m.big);
+    M.forEach((m,i) => m.i = i);
+    const bd = {}; if (pjn) feats(pjn).forEach(f => { bd[String(f.properties.code)] = toPath(f.geometry).d; });
+    Object.keys(PN).forEach((pc,k) => {
+      const ms = M.filter(m => m.pc===pc); if (!ms.length) return;
+      const core = ms.filter(m => !/^옹진군$/.test(m.name)), zs = core.length ? core : ms;
+      const zb = [Math.min(...zs.map(m=>m.big.b[0])), Math.min(...zs.map(m=>m.big.b[1])), Math.max(...zs.map(m=>m.big.b[2])), Math.max(...zs.map(m=>m.big.b[3]))];
+      const W = ms.reduce((a,m) => a+m.big.a, 0), sh = LABEL_SHIFT[pc] || [0,0];
+      P[pc] = { pc, name:PN[pc][0], short:PN[pc][1], m:ms.map(m=>m.i), zb, bd:bd[pc] || '', hc:`hsl(${k*47%360} 62% 40%)`,
+        c:[ms.reduce((a,m)=>a+m.big.c[0]*m.big.a,0)/W+sh[0], ms.reduce((a,m)=>a+m.big.c[1]*m.big.a,0)/W+sh[1]] };
+    });
+    KC['전국'] = '00'; Object.values(P).forEach(p => KC[p.name] = p.pc); M.forEach(m => KC[mkey(m)] = m.code);
+    if (REAL) renderUpd(M.filter(m => REAL.regions[m.code]).length);
+    FULL = [0, 0, GB[2]+8, GB[3]+8]; vb = FULL.slice(); tgt = FULL; svg.setAttribute('viewBox', FULL.join(' '));
+    $('#gm').innerHTML = M.map(m => `<path class="m" data-i="${m.i}" fill-rule="evenodd" d="${m.d}"/>`).join('');
+    M.forEach((m,i) => m.el = $('#gm').children[i]);
+    $('#gb').innerHTML = Object.values(P).filter(p => p.bd).map(p => `<path d="${p.bd}"/>`).join('');
+    buildSearch(); $('#msg').hidden = true; refresh();
+  } catch (e) {
+    $('#msg').innerHTML = '지도 파일을 불러오지 못했어요. 인터넷 연결을 확인하거나, <b>southkorea-maps</b> 저장소의 kostat/2018/json 폴더에서<br><code>skorea-municipalities-2018-topo-simple.json</code>, <code>skorea-provinces-2018-topo-simple.json</code> 파일을 이 HTML과 같은 폴더에 넣어주세요.';
+  }
+}
+
+/* 갱신일 표시 (14일 주기) */
+function renderUpd(matched) {
+  const el = $('#upd');
+  if (!REAL) { el.innerHTML = '데이터 갱신일 <b>—</b> · 실데이터 파일 미연결 (샘플 수치 표시 중)'; return; }
+  const d = new Date(REAL.updatedAt+'T00:00:00'), nx = new Date(d.getTime()+14*864e5);
+  const f = x => `${x.getFullYear()}-${String(x.getMonth()+1).padStart(2,'0')}-${String(x.getDate()).padStart(2,'0')}`;
+  const over = Date.now() > nx.getTime()+864e5, v = REAL.validation || {}, ok = v.status==='ok';
+  el.innerHTML = `데이터 갱신일 <b>${REAL.updatedAt}</b> · 14일마다 갱신${over ? ' (갱신 대기 중)' : ' · 다음 '+f(nx)}<br><span>${ok ? '✓ 검증 통과' : '⚠ 검증 확인 필요'}${matched!=null ? ` · 시·군·구 ${matched}/${M.length} 연결` : ''}</span>`;
+  el.querySelector('span').title = (v.checks||[]).map(c => `${c.ok ? '통과' : '경고'} · ${c.name}${c.detail ? ' ('+c.detail+')' : ''}`).join('\n') || '검증 결과 없음';
+}
+function setInd(n) { S.ind = n; $('#fi').value = n; refresh(); }
+function setupFilters() {
+  $('#fi').innerHTML = IND.map(i => `<option>${i}</option>`).join('');
+  const ys = REAL ? [...REAL.years].sort((a,b)=>b-a) : [2025,2024,2023,2022,2021];
+  $('#fy').innerHTML = ys.map(y => `<option>${y}</option>`).join(''); $('#fy').value = S.year;
+}
+
+function tween(t) {
+  const a = vb.slice(), s0 = performance.now();
+  (function f(now) { const k = Math.min(1,(now-s0)/550), e = 1-Math.pow(1-k,3);
+    vb = a.map((v,i) => v+(t[i]-v)*e); svg.setAttribute('viewBox', vb.join(' ')); if (k<1) requestAnimationFrame(f); })(s0);
+}
+
+function refresh() {
+  const sel = S.sel, vals = M.map(m => V(m)), [glo,ghi] = domain(vals.filter(v => v!=null));
+  const [lo,hi] = sel ? domain(vals.filter((v,i) => v!=null && M[i].pc===sel.pc)) : [glo,ghi];
+  M.forEach((m,i) => { const ins = sel && m.pc===sel.pc;
+    m.el.setAttribute('fill', !ins ? IVORY : S.dist===i ? comp(PCOL[m.pc]) : colorAt(vals[i], lo, hi, m.pc));
+    m.el.classList.toggle('dim', !!sel && !ins); m.el.classList.toggle('on', S.dist===i); });
+  $('#lmin').textContent = lo.toFixed(1)+'%'; $('#lmax').textContent = hi.toFixed(1)+'%';
+  $('#lbar').style.background = S.m==='s' ? 'linear-gradient(90deg,#f3efe4,#a89f8d)' : 'linear-gradient(90deg,#8c88a6,#1d1b2e)';
+  $('#lscale').style.display = S.sel ? '' : 'none';
+  $('#lgrp').innerHTML = S.sel ? `<span><b class="gsw" style="background:${PCOL[S.sel.pc]}"></b>${S.sel.name}</span>`
+    : '<span>시·도를 클릭하면 지역 색이 나타나요 ·</span>' + Object.values(P).map(p => `<span><b class="gsw" style="background:${PCOL[p.pc]}"></b>${p.short}</span>`).join('');
+  svg.classList.toggle('dark', S.m==='c' && !!S.sel);
+  $('#lname').textContent = S.m==='s' ? '창업률 (같은 색 안에서 진할수록 높음)' : '폐업률 (같은 색 안에서 어두울수록 높음)';
+  labels(); crumb(); panel(); statusTab();
+}
+function seaLabels() {
+  const w = pj([125.05,36.3]), e = [FULL[2]-38, pj([130,36.4])[1]], so = pj([127.45,33.8]), f = v => v.toFixed(1);
+  const t = (txt,[x,y],r) => `<text class="sea" x="${f(x)}" y="${f(y)}" transform="rotate(${r} ${f(x)} ${f(y)})">${txt}</text>`;
+  return t('West Sea', w, -10) + t('East Sea', e, 8) + t('South Sea', so, -6);   // 남해: 제주 1시 방향
+}
+function labels() {
+  let h = '';
+  if (!S.sel) {
+    h = Object.values(P).map(p => { const w = p.zb[2]-p.zb[0], fs = Math.max(4.5, Math.min(9, w/(p.short.length*1.15)));
+      return `<text x="${p.c[0].toFixed(1)}" y="${p.c[1].toFixed(1)}" font-size="${fs.toFixed(1)}" font-weight="600">${p.short}</text>`; }).join('') + seaLabels();
+  } else {
+    const k = Math.min(svg.clientWidth/tgt[2], svg.clientHeight/tgt[3]) || 1;
+    h = S.sel.m.map(i => { const m = M[i], w = m.big.b[2]-m.big.b[0], ht = m.big.b[3]-m.big.b[1];
+      const fs = Math.min(w/(m.name.length*1.05), ht*.6, 13/k); if (fs*k < 6.5) return '';
+      return `<text x="${m.big.c[0].toFixed(1)}" y="${m.big.c[1].toFixed(1)}" font-size="${fs.toFixed(2)}">${m.name}</text>`; }).join('');
+  }
+  $('#gl').innerHTML = h;
+}
+function crumb() {
+  $('#crumb').innerHTML = '<button data-go="0">전국</button>' + (S.sel ? ` › <button data-go="1">${S.sel.name}</button>` : '') + (S.dist!=null ? ` › ${M[S.dist].name}` : '');
+}
+const bars = (list, max) => list.map(([n,v,t]) => `<div class="bar"><span>${n}</span><div><i style="width:${v/max*100}%"></i></div><em>${t}</em></div>`).join('');
+function rankText(key, keys) {
+  const v = stat(key).v, ok = keys.filter(k => !stat(k).none);
+  return ok.filter(k => stat(k).v > v).length+1 + '위 / ' + ok.length;
+}
+function panel() {
+  const L = LB[S.m], m = S.dist!=null ? M[S.dist] : null;
+  const key = m ? mkey(m) : S.sel ? S.sel.name : '전국', st = stat(key);
+  const title = m ? `${S.sel.short} ${m.name}` : S.sel ? S.sel.name : '전국';
+  const pool = S.sel ? M.filter(x => x.pc===S.sel.pc) : M;
+  const top = pool.map(x => [x, V(x, '전체')]).filter(a => a[1]!=null).sort((a,b) => b[1]-a[1]).slice(0,5);
+  const topH = `<h3>${L.rate} 높은 시·군·구 TOP 5${S.sel ? ' ('+S.sel.short+')' : ''} <small style="color:var(--muted);font-weight:400">· 업종 필터 제외</small></h3><ol class="top" style="padding-left:0">${top.map(([x,v],r) => `<li><button data-i="${x.i}">${r+1}. ${S.sel?'':PN[x.pc][1]+' '}${x.name}</button><span>${v.toFixed(1)}%</span></li>`).join('')}</ol>`;
+  if (st.none) { $('#panel').innerHTML = `<h2>${title}</h2><p class="empty">${key==='전국' ? '업종별 전국 수치는 실데이터를 연결하면 표시돼요. 업종을 ‘전체’로 바꾸면 공식 전국 수치를 볼 수 있어요.' : `이 지역은 공개된 ${L.rate} 자료가 없어요. (비공개·집계 제외 또는 지도와 통계 지역 코드 불일치)`}</p>${topH}`; return; }
+  const k3 = m ? ['전국 순위', rankText(key, M.map(mkey))] : S.sel ? ['시·도 순위', rankText(key, Object.values(P).map(p=>p.name))] : ['시·군·구 수', M.length+'개'];
+  const lag = S.m==='c' && st.y !== S.year ? ` · 소멸기업은 1년 늦게 집계돼 ${st.y}년 기준` : '';
+  let indH = '';
+  if (st.ind) {
+    const all = IND.slice(1).map((n,i) => [n, st.ind[i]]).sort((a,b) => b[1]-a[1]), shown = S.moreInd ? all : all.slice(0,8), mx = Math.max(...all.map(a => a[1]));
+    indH = `<h3>${L.ind} <small style="color:var(--muted);font-weight:400">· 막대를 누르면 그 업종만 봐요</small></h3>` +
+      shown.map(([n,v]) => `<button class="bar" data-ind="${n}"${S.ind===n ? ' aria-current="true"' : ''}><span title="${n}">${n}</span><div><i style="width:${v/mx*100}%"></i></div><em>${(v*100).toFixed(1)}%</em></button>`).join('') +
+      (all.length > 8 ? `<button class="more" data-more="1">${S.moreInd ? '접기' : `전체 ${all.length}개 업종 보기`}</button>` : '');
+  }
+  const ageH = st.age ? `<h3>${L.age}</h3>${bars(AGE.map((n,i) => [n, st.age[i], (st.age[i]*100).toFixed(0)+'%']), Math.max(...st.age))}` : '';
+  $('#panel').innerHTML = `<h2>${title}</h2><small style="color:var(--muted)">${st.y}년 · ${S.ind} · ${L.rate}${st.ref ? ' · 국가데이터처 공식 발표(잠정)' : ''}${lag}</small>
+   <div class="kpis"><div class="kpi"><small>${L.rate}</small><strong>${st.v.toFixed(1)}%</strong></div>
+   <div class="kpi"><small>${L.cnt}</small><strong>${fmtN(st.n)}</strong></div>
+   <div class="kpi"><small>${k3[0]}</small><strong>${k3[1]}</strong></div></div>
+   ${indH}${ageH}${topH}`;
+}
+
+/* ===== 5. 이동 / 호버 / 클릭 ===== */
+function nav(pc, dist = null) {
+  S.sel = pc ? P[pc] : null; S.dist = dist; hover(null); let t = FULL;
+  if (S.sel) { const b = S.sel.zb, w = b[2]-b[0], h = b[3]-b[1], pad = Math.max(w,h)*.1; t = [b[0]-pad, b[1]-pad, w+pad*2, h+pad*2]; }
+  tgt = t; tween(t); refresh();
+}
+function up() { if (S.dist!=null) { S.dist = null; refresh(); } else if (S.sel) nav(null); } // 한 단계 이전 지역으로
+function hover(i) {
+  const ov = $('#ov'), m = i==null ? null : M[i];
+  if (!m || S.sel) { if (hp) { ov.innerHTML = ''; hp = null; } return; }
+  if (hp !== m.pc) {
+    hp = m.pc; const p = P[m.pc];
+    ov.innerHTML = `<g class="oz">${p.m.map(j => `<path class="om" data-j="${j}" fill-rule="evenodd" fill="${M[j].el.getAttribute('fill')}" d="${M[j].d}"/>`).join('')}${p.bd ? `<path class="ob" style="stroke:${p.hc}" d="${p.bd}"/>` : ''}</g>`;
+    const g = ov.firstChild; g.getBoundingClientRect(); g.style.transform = 'scale(1.04)';
+  }
+  ov.querySelector('.hl')?.classList.remove('hl'); ov.querySelector(`[data-j="${i}"]`)?.classList.add('hl');
+}
+let tipK = null;
+function chartSvg(tr) {
+  const W = 200, H = 148, L = 34, R = 8, T = 8, B = 24, mx = Math.max(5, Math.ceil(Math.max(...tr.map(o => o.v))/5)*5), pw = W-L-R, ph = H-T-B;
+  const X = i => L+(i+.5)*pw/tr.length, Y = v => T+ph*(1-v/mx), dash = S.m==='c' ? ' stroke-dasharray="4 3"' : '', k = '#1d1f27';
+  let g = `<line x1="${L}" y1="${T}" x2="${L}" y2="${T+ph}" stroke="${k}"/><line x1="${L}" y1="${T+ph}" x2="${L+pw}" y2="${T+ph}" stroke="${k}"/>`;
+  for (let t = 0; t <= mx; t += 5) g += `<line x1="${L-3}" y1="${Y(t)}" x2="${L}" y2="${Y(t)}" stroke="${k}"/><text x="${L-6}" y="${Y(t)+3.5}" text-anchor="end">${t}%</text>`;
+  const bw = Math.min(26, pw/tr.length*.5);
+  tr.forEach((o,i) => { g += `<rect x="${X(i)-bw/2}" y="${Y(o.v)}" width="${bw}" height="${T+ph-Y(o.v)}" fill="none" stroke="${k}"/><text x="${X(i)}" y="${T+ph+14}" text-anchor="middle">${o.y}</text>`; });
+  g += `<polyline fill="none" stroke="${k}"${dash} points="${tr.map((o,i) => X(i)+','+Y(o.v)).join(' ')}"/>` + tr.map((o,i) => `<circle cx="${X(i)}" cy="${Y(o.v)}" r="3" fill="${k}"/>`).join('');
+  return `<svg width="160" height="118" viewBox="0 0 ${W} ${H}" font-size="11" fill="${k}" font-family="inherit">${g}</svg>`;
+}
+function tipHtml(m) {
+  const key = mkey(m), st = stat(key), name = `${P[m.pc].short} ${m.name}`, word = S.m==='s' ? '창업' : '폐업';
+  if (st.none) return `<div class="tt">[ ${name} ${word} 동향 요약 ]</div><div class="box">자료 없음</div>`;
+  const ser = []; (REAL ? [...REAL.years].sort((a,b) => a-b) : [2021,2022,2023,2024,2025]).forEach(y => { const t = stat(key, S.ind, y); if (!t.none && t.y<=st.y && !ser.some(o => o.y===t.y)) ser.push({y:t.y, v:t.v}); });
+  const tr = ser.slice(-4), pv = tr.length>1 && tr[tr.length-2].y===st.y-1 ? tr[tr.length-1].v - tr[tr.length-2].v : null;
+  const dl = pv==null ? '(전년 대비 자료 없음)' : `(<span class="${pv>=0 ? 'up' : 'dn'}">${pv>=0 ? '▲' : '▼'}</span> ${Math.abs(pv).toFixed(1)}%p 전년 대비)`;
+  const lg = `<svg width="30" height="10" viewBox="0 0 30 10"><line x1="0" y1="5" x2="22" y2="5" stroke="#1d1f27"${S.m==='c' ? ' stroke-dasharray="4 3"' : ''}/><circle cx="25" cy="5" r="3" fill="#1d1f27"/></svg>`;
+  const biz = st.act != null ? `<div class="biz"><small>현재 사업체 현황 · ${st.ay}년</small><small>활동기업</small><b>${fmtN(st.act)}</b>${st.actSel != null ? `<small>${S.ind}</small><b>${fmtN(st.actSel)}</b>` : ''}</div>` : '';
+  return `<div class="tt">[ ${st.y}년 ${name} ${word} 동향 요약 ]</div>
+    <div class="box"><div><span>${S.m==='s' ? '신규 창업률' : '폐 업 률'}</span><b>${st.v.toFixed(1)}%</b></div><small>${dl}</small></div>
+    <div class="cw">${chartSvg(tr.length ? tr : [{y:st.y, v:st.v}])}<div class="rc"><div class="lg">${lg}(${S.m==='s' ? '창업률' : '폐업률'})</div>${biz}</div></div>`;
+}
+svg.addEventListener('mousemove', e => {
+  const i = e.target.dataset.i; hover(i==null ? null : +i);
+  if (i==null || !S.sel || S.dist==null || M[+i].pc !== S.sel.pc) { tip.style.opacity = 0; tipK = null; return; }
+  const k = i+'|'+S.m+'|'+S.ind+'|'+S.year; if (k !== tipK) { tip.innerHTML = tipHtml(M[+i]); tipK = k; }
+  const w = tip.offsetWidth, h = tip.offsetHeight; let x = e.clientX+16, y = e.clientY+16;
+  if (x+w > innerWidth-8) x = e.clientX-w-16; if (y+h > innerHeight-8) y = innerHeight-h-8;
+  tip.style.opacity = 1; tip.style.left = Math.max(8,x)+'px'; tip.style.top = Math.max(8,y)+'px';
+});
+svg.addEventListener('mouseleave', () => { tip.style.opacity = 0; tipK = null; hover(null); });
+svg.addEventListener('click', e => {
+  const i = e.target.dataset.i;
+  if (i==null) { up(); return; }
+  const m = M[+i];
+  if (!S.sel || m.pc !== S.sel.pc) nav(m.pc); else { S.dist = m.i; refresh(); }
+});
+$('#crumb').addEventListener('click', e => { const g = e.target.dataset.go; if (g==='0') nav(null); if (g==='1') nav(S.sel.pc); });
+$('#panel').addEventListener('click', e => {
+  const t = e.target.closest('[data-ind],[data-more],[data-i]'); if (!t) return;
+  if (t.dataset.ind) setInd(S.ind===t.dataset.ind ? '전체' : t.dataset.ind);
+  else if (t.dataset.more) { S.moreInd = !S.moreInd; panel(); }
+  else nav(M[+t.dataset.i].pc, +t.dataset.i);
+});
+document.querySelectorAll('.seg button').forEach(b => b.addEventListener('click', () => {
+  S.m = b.dataset.m; document.querySelectorAll('.seg button').forEach(x => x.setAttribute('aria-pressed', x===b)); refresh(); }));
+
+/* ===== 6. 메뉴 (검색 · 검색기록 · 필터 · 현황) ===== */
+const menu = $('#menu'), scrim = $('#scrim'), mb = $('#mb');
+function setMenu(o) { menu.classList.toggle('open', o); scrim.classList.toggle('on', o); mb.setAttribute('aria-expanded', o); menu.setAttribute('aria-hidden', !o); if (o) setTimeout(() => $('#mq').focus(), 260); }
+mb.addEventListener('click', () => setMenu(!menu.classList.contains('open')));
+$('#mclose').addEventListener('click', () => setMenu(false)); scrim.addEventListener('click', () => setMenu(false));
+document.addEventListener('keydown', e => { if (e.key==='Escape') setMenu(false); });
+document.querySelectorAll('.mtabs button').forEach(b => b.addEventListener('click', () => {
+  document.querySelectorAll('.mtabs button').forEach(x => x.setAttribute('aria-selected', x===b));
+  $('#tab-search').hidden = b.dataset.tab !== 'search'; $('#tab-status').hidden = b.dataset.tab !== 'status'; }));
+
+let IDX = [];
+function buildSearch() {
+  IDX = [...Object.values(P).map(p => ({t:'지역', label:p.name, pc:p.pc})), ...M.map(m => ({t:'지역', label:`${PN[m.pc][0]} › ${m.name}`, pc:m.pc, i:m.i})),
+         ...IND.slice(1).map(n => ({t:'업종', label:n, ind:n}))];
+}
+const HK = 'startup-map-history';   // 검색 기록은 이 브라우저(localStorage)에만 저장돼요
+const loadH = () => { try { return JSON.parse(localStorage.getItem(HK)) || []; } catch (e) { return []; } };
+let HIST = loadH();
+function renderHist() {
+  $('#hlist').innerHTML = HIST.length ? HIST.map((h,k) => `<li><button data-h="${k}"><em>${h.t}</em>${h.label}</button></li>`).join('') : '<li class="none">아직 검색 기록이 없어요</li>';
+}
+function addHist(h) {
+  const r = { t:h.t, label:h.label, pc:h.pc, i:h.i, ind:h.ind };
+  HIST = [r, ...HIST.filter(x => x.label !== r.label)].slice(0, 10);
+  try { localStorage.setItem(HK, JSON.stringify(HIST)); } catch (e) {}
+  renderHist();
+}
+const norm = x => x.replace(/\s/g, '');
+function runSearch() {
+  const v = norm($('#mq').value.trim()), hit = v ? IDX.filter(x => norm(x.label).includes(v)).slice(0, 10) : [];
+  $('#mres').innerHTML = hit.length ? hit.map(h => `<li><button data-k="${IDX.indexOf(h)}"><em>${h.t}</em>${h.label}</button></li>`).join('') : (v ? '<li class="none">검색 결과가 없어요</li>' : '');
+}
+function pick(h) {
+  addHist(h); $('#mq').value = ''; runSearch();
+  if (h.ind != null) setInd(h.ind); else nav(h.pc, h.i ?? null);
+  setMenu(false);
+}
+$('#mq').addEventListener('input', runSearch);
+$('#mq').addEventListener('keydown', e => { if (e.key==='Enter') { const b = $('#mres button'); if (b) pick(IDX[+b.dataset.k]); } });
+$('#mres').addEventListener('click', e => { const b = e.target.closest('button'); if (b) pick(IDX[+b.dataset.k]); });
+$('#hlist').addEventListener('click', e => { const b = e.target.closest('button'); if (b) pick(HIST[+b.dataset.h]); });
+$('#hclear').addEventListener('click', () => { HIST = []; try { localStorage.removeItem(HK); } catch (e) {} renderHist(); });
+renderHist();
+
+function statusTab() {
+  const L = LB[S.m], R = REF[S.m];
+  const rows = Object.values(P).map(p => [p, stat(p.name)]).filter(a => !a[1].none).sort((a,b) => b[1].v - a[1].v);
+  $('#tab-status').innerHTML = `<h3>전국 ${L.rate} (공식)</h3>
+    <div class="ref2"><div><small>${R.year}년 ${L.rate}</small><strong>${R.rate}%</strong></div><div><small>${L.cnt}</small><strong>${fmtN(R.n)}</strong></div></div>
+    <small style="color:var(--muted)">국가데이터처 기업생멸행정통계(잠정)</small>
+    <h3>시·도별 ${L.rate} 순위 <small style="color:var(--muted);font-weight:400">· ${S.ind}</small></h3>
+    <ol class="rk" style="padding:0">${rows.map(([p,st],k) => `<li><button data-pc="${p.pc}"><span>${k+1}. ${p.name}</span><span>${st.v.toFixed(1)}%</span></button></li>`).join('')}</ol>`;
+}
+$('#tab-status').addEventListener('click', e => { const b = e.target.closest('[data-pc]'); if (b) { nav(b.dataset.pc); setMenu(false); } });
+
+$('#fi').addEventListener('change', e => setInd(e.target.value));
+$('#fy').addEventListener('change', e => { S.year = +e.target.value; refresh(); });
+
+init();
+</script>
+</body>
+</html>
