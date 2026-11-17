@@ -216,9 +216,11 @@
 <script>
 /* =====================================================
    여기만 수정하면 됩니다. 페이지를 추가할 때는 { ... }, 블록을 복사해서 붙여넣으세요.
-   title    : 카드 제목
-   desc     : 한 줄 설명
-   href     : 파일 경로 (예: "page1.html", "docs/page3.html")
+   href     : 파일 경로 (예: "project5.html", "docs/page3.html")
+              → 이 파일이 저장소에 아직 없으면 카드와 버블이 숨겨짐
+              → 파일을 푸시하면 코드 수정 없이 자동으로 나타남
+   title    : 카드 제목 (생략하면 그 HTML 파일의 <title>을 그대로 사용)
+   desc     : 한 줄 설명 (생략하면 그 HTML의 <meta name="description">을 사용)
    category : 분류 이름 (같은 이름끼리 한 구역으로 묶임)
    tags     : 태그 목록 (상단 필터 버튼으로 사용됨)
    date     : 표시할 날짜 (선택)
@@ -228,7 +230,7 @@
               → 사진이 없으면 제목 첫 글자가 대신 표시됨
    preview  : true면 실제 페이지가 카드에 미리보기로 뜸, false면 글자 표시
    ===================================================== */
-const items = [
+const ALL_ITEMS = [
   /* ---------- 프로젝트 ---------- */
   { title: "HR 통합 시스템 만들어보기", desc: "인사(HR) 시스템 만들어보기", href: "hr-system.html#info",
     category: "프로젝트", tags: ["HR"], image: "images/hr-system.png", preview: false },
@@ -238,24 +240,19 @@ const items = [
     category: "프로젝트", tags: ["지도"], image: "images/car.png", preview: false },
   { title: "대한민국 창폐업률", desc: "대한민국 창폐업률 확인해보기", href: "startup-map.html",
     category: "프로젝트", tags: ["지도"], image: "images/mappoint.png", preview: false },
-  { title: "프로젝트 추가 예정 5", desc: "추가될 페이지 자리입니다.", href: "#all",
-    category: "프로젝트", tags: ["준비중"], image: "images/project5.png", preview: false },
-  { title: "프로젝트 추가 예정 6", desc: "추가될 페이지 자리입니다.", href: "#all",
-    category: "프로젝트", tags: ["준비중"], image: "images/project6.png", preview: false },
-  /* ---------- 학습 자료 ---------- */
+  /* 아래는 빈 자리: 해당 HTML을 푸시하면 자동으로 나타남 */
+  { href: "project5.html", category: "프로젝트", tags: [], image: "images/project5.png", preview: false },
+  { href: "project6.html", category: "프로젝트", tags: [], image: "images/project6.png", preview: false },
+
   /* ---------- 학습 자료 ---------- */
   { title: "함수·벡터 그래프", desc: "함수와 벡터 그래프 그려보기", href: "Drawgraf.html",
     category: "학습 자료", tags: ["그래프"], date: "2026.11", image: "images/drawgraf.png", preview: false },
-  { title: "두 번째 페이지 제목", desc: "한 줄 설명을 적습니다.", href: "page2.html",
-    category: "학습 자료", tags: ["통계"], date: "2026.11", image: "images/page2.png", preview: false },
-  { title: "학습 자료 추가 예정 3", desc: "추가될 페이지 자리입니다.", href: "#all",
-    category: "학습 자료", tags: ["준비중"], image: "images/study3.png", preview: false },
-  { title: "학습 자료 추가 예정 4", desc: "추가될 페이지 자리입니다.", href: "#all",
-    category: "학습 자료", tags: ["준비중"], image: "images/study4.png", preview: false },
-  { title: "학습 자료 추가 예정 5", desc: "추가될 페이지 자리입니다.", href: "#all",
-    category: "학습 자료", tags: ["준비중"], image: "images/study5.png", preview: false },
-  { title: "학습 자료 추가 예정 6", desc: "추가될 페이지 자리입니다.", href: "#all",
-    category: "학습 자료", tags: ["준비중"], image: "images/study6.png", preview: false }
+  /* 아래는 빈 자리: 해당 HTML을 푸시하면 자동으로 나타남 */
+  { href: "page2.html",  category: "학습 자료", tags: [], image: "images/page2.png",  preview: false },
+  { href: "study3.html", category: "학습 자료", tags: [], image: "images/study3.png", preview: false },
+  { href: "study4.html", category: "학습 자료", tags: [], image: "images/study4.png", preview: false },
+  { href: "study5.html", category: "학습 자료", tags: [], image: "images/study5.png", preview: false },
+  { href: "study6.html", category: "학습 자료", tags: [], image: "images/study6.png", preview: false }
 ];
 /* ===================================================== */
 
@@ -277,6 +274,31 @@ function nextImage(img) {
     img.replaceWith(Object.assign(document.createElement("div"), { className: "ph", textContent: img.alt.charAt(0) }));
   }
 }
+
+/* 저장소에 실제로 있는 페이지만 남기고, 제목·설명이 비어 있으면 그 페이지에서 읽어옴 */
+async function loadItems(list) {
+  const checked = await Promise.all(list.map(async (x) => {
+    const file = x.href.split("#")[0];
+    if (!file) return null;
+    try {
+      const res = await fetch(file, { cache: "no-cache" });
+      if (!res.ok) return null;
+      if (x.title && x.desc) return x;
+      const doc = new DOMParser().parseFromString(await res.text(), "text/html");
+      return {
+        ...x,
+        title: x.title || doc.title.trim() || file.replace(/\.html?$/i, ""),
+        desc: x.desc || doc.querySelector('meta[name="description"]')?.content?.trim() || ""
+      };
+    } catch {
+      return x.title ? x : null;       // 로컬 파일로 열어 확인할 수 없을 때는 제목 있는 항목만 표시
+    }
+  }));
+  return checked.filter(Boolean);
+}
+
+(async () => {
+const items = await loadItems(ALL_ITEMS);
 
 const categories = [...new Set(items.map((x) => x.category))];
 const allTags = [...new Set(items.flatMap((x) => x.tags || []))];
@@ -523,6 +545,8 @@ onScroll();
     }, 200);
   });
 })();
+
+})();   /* loadItems 끝 */
 </script>
 </body>
 </html>
