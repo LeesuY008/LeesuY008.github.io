@@ -83,6 +83,7 @@ svg{touch-action:none;width:100%;height:auto;display:block}
 .al{display:flex;gap:8px;align-items:flex-start;width:100%;text-align:left;border:0;background:none;color:var(--ink);font:inherit;padding:8px;border-radius:10px;cursor:pointer}
 .al:hover{background:var(--bg)}.al.new{background:color-mix(in srgb,var(--acc) 10%,transparent)}
 .nw{color:var(--acc);font-weight:700;font-size:11px}
+a.btn{text-decoration:none;display:inline-block}
 .cnt{background:var(--acc);color:#fff;border-radius:999px;font-size:11px;padding:0 6px;margin-left:2px}
 .cert{border:1px solid var(--line);border-radius:var(--r);padding:28px;background:var(--panel);margin-bottom:14px}
 .cert h2{text-align:center;letter-spacing:.3em;margin-bottom:4px}
@@ -116,6 +117,8 @@ const won=n=>n.toLocaleString("ko-KR")+"원";
 const fmt=d=>d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
 const today=()=>fmt(new Date()),nowS=()=>today()+" "+new Date().toTimeString().slice(0,5),uid=()=>Math.random().toString(36).slice(2,10);
 const n0=v=>+v||0;
+const GUIDE="https://leesuy008.github.io/hr-system-guide.pdf",GN="HR 통합 시스템 사용 설명서(사용자용).pdf";
+const safeU=u=>/^(https:\/\/[^\s"<>]+|[\w.\-\/]+\.pdf)$/i.test(String(u||""))?u:"";
 
 /* ===== 기본(샘플) 데이터 ===== */
 const G={mgmt:"경영지원본부",biz:"사업본부",tech:"기술본부",ind:"독립 부서"};
@@ -140,7 +143,7 @@ function DEF(){
  const leave=[{id:uid(),emp:me.id,date:ld,type:"연차",from:ld,to:ld,days:1,why:"개인 사유 (샘플)",status:"승인",dec:ld+" 09:00"}];
  const ot=[{id:uid(),emp:me.id,date:od,wdate:od,type:"연장",from:"18:00",to:"20:00",hours:2,why:"월말 마감 업무 (샘플)",status:"승인",dec:od+" 10:00"}];
  const grant=[{emp:me.id,year:String(T.getFullYear()),days:15}],cert=[];
- const notice=[{id:uid(),title:"[필독] HR 통합 시스템 이용 안내",body:"인사정보, 근태, 휴가·초과근무 신청, 증명서 신청, 연말정산을 한 곳에서 이용할 수 있습니다. 신청 결과는 우측 상단 알림(종 모양)으로 알려 드립니다. (샘플 공지)",date:fmt(T),pin:"Y"},{id:uid(),title:"연차 사용 계획 제출 안내 (샘플)",body:"연말 연차 소진을 위해 사용 계획을 팀장에게 공유해 주세요. 휴가는 근태관리·증명서발급 메뉴의 휴가 신청에서 신청합니다. (샘플 공지)",date:fmt(back(3)),pin:""}];
+ const notice=[{id:uid(),title:"[필독] HR 통합 시스템 이용 안내",body:"인사정보, 근태, 휴가·초과근무 신청, 증명서 신청, 연말정산을 한 곳에서 이용할 수 있습니다. 신청 결과는 우측 상단 알림(종 모양)으로 알려 드립니다. 아래 버튼으로 사용 설명서(PDF)를 열어 읽을 수 있습니다. (샘플 공지)",date:fmt(T),pin:"Y",file:GUIDE,fname:GN},{id:uid(),title:"연차 사용 계획 제출 안내 (샘플)",body:"연말 연차 소진을 위해 사용 계획을 팀장에게 공유해 주세요. 휴가는 근태관리·증명서발급 메뉴의 휴가 신청에서 신청합니다. (샘플 공지)",date:fmt(back(3)),pin:""}];
  return{dept,emp,edge,pay,
   hist:[{emp:me.id,date:"2022-03-01",type:"입사",from:"-",to:"인사팀"},{emp:me.id,date:"2024-01-01",type:"부서이동",from:"인사팀",to:"총무팀"}],
   crit:[["업무 성과","목표 달성도, 결과물의 품질",40],["직무 역량","전문 지식, 문제 해결",30],["협업·소통","부서 간 협력, 정보 공유",20],["근무 태도","책임감, 근태",10]].map(([name,desc,weight])=>({name,desc,weight})),
@@ -159,6 +162,7 @@ const me=()=>DB.emp.find(e=>e.id==curId)||DB.emp[0]||null;
 function derive(){D=DB.dept.map(d=>[d.id,d.name,d.group,DB.emp.filter(e=>e.dept==d.id).map(e=>[e.name,e.rank])]);E=DB.edge.map(e=>[e.a,e.b,n0(e.w)||1]);ISO=D.filter(d=>!rel(d[0]).length).map(d=>d[0])}
 const save=()=>{SV("hr_db",DB);derive()};
 [...RK,"notice"].forEach(n=>DB[n].forEach(r=>{if(!r.id)r.id=uid()}));
+if(!LS("hr_mig_n1")){DB.notice.forEach(n=>{if(/HR 통합 시스템 이용 안내/.test(n.title)&&!n.file){n.file=GUIDE;n.fname=GN;n.body=(n.body||"")+"\n\n아래 버튼으로 사용 설명서(PDF)를 열어 읽을 수 있습니다."}});SV("hr_mig_n1",1)}
 derive();save();
 const DEDS=[["국민연금","pension"],["건강보험","health"],["장기요양보험","care"],["고용보험","employ"],["소득세","tax"],["지방소득세","ltax"]];
 const grade=s=>s>=90?"S":s>=80?"A":s>=70?"B":"C";
@@ -282,7 +286,7 @@ function vAppr(){
  return '<div class="stats">'+[["결재 대기",all.filter(pend).length+"건"],["승인·발급",all.filter(done).length+"건"],["반려",all.filter(r=>r.st=="반려").length+"건"]].map(x=>stat(x[0],x[1])).join("")+'</div><div class="box">'+(rows.length?tbl(["구분","내용","신청일","상태","처리일시"],rows.map(r=>[esc(r.label),esc(r.sum),esc(r.date),stc(r.st),esc(r.dec||"-")])):'<div class="empty">해당하는 결재 내역이 없습니다.</div>')+'</div><p class="note">부서이동, 교육, 휴가, 초과근무, 증명서 신청을 한곳에 모았습니다. 신청은 각 메뉴에서 하고, 처리 결과는 여기와 우측 상단 알림(종 모양)에서 확인합니다.</p>'}
 function vNotice(){
  const rd=LS("hr_nread")||[],L=[...DB.notice].sort((a,b)=>(b.pin=="Y")-(a.pin=="Y")||(a.date<b.date?1:-1));
- return L.length?L.map(n=>{const nw=!rd.includes(n.id),op=selN==n.id;return '<div class="box"><button class="al" style="padding:0" data-nt="'+esc(n.id)+'"><span style="flex:1"><b>'+(n.pin=="Y"?"📌 ":"")+esc(n.title)+"</b> "+(nw?'<span class="nw">NEW</span>':"")+'<br><span class="note">'+esc(n.date)+'</span></span><span class="note">'+(op?"접기":"펼치기")+'</span></button>'+(op?'<p style="white-space:pre-wrap;margin:12px 0 0">'+esc(n.body)+"</p>":"")+"</div>"}).join(""):'<div class="box">'+noEmp+'</div>'}
+ return L.length?L.map(n=>{const nw=!rd.includes(n.id),op=selN==n.id;return '<div class="box"><button class="al" style="padding:0" data-nt="'+esc(n.id)+'"><span style="flex:1"><b>'+(n.pin=="Y"?"📌 ":"")+esc(n.title)+"</b> "+(nw?'<span class="nw">NEW</span>':"")+'<br><span class="note">'+esc(n.date)+'</span></span><span class="note">'+(op?"접기":"펼치기")+'</span></button>'+(op?'<p style="white-space:pre-wrap;margin:12px 0 0">'+esc(n.body)+"</p>"+(safeU(n.file)?'<p class="nonprint" style="margin:12px 0 0"><a class="btn" href="'+esc(safeU(n.file))+'" target="_blank" rel="noopener">📄 '+esc(n.fname||"첨부 파일")+' 열어서 읽기</a> <a class="btn sm" href="'+esc(safeU(n.file))+'" download>다운로드</a></p>':""):"")+"</div>"}).join(""):'<div class="box">'+noEmp+'</div>'}
 
 /* ===== 부서 연관도 ===== */
 const SW=["","약함","보통","강함"];
@@ -365,7 +369,7 @@ const SC={
  att:{t:"근태 기록",n:"출근·퇴근 시각을 입력합니다. 기준 출근시각(09:00)보다 늦은 출근은 지각으로 집계됩니다. 승인된 휴가는 근태현황에 자동으로 표시됩니다.",cols:[C("emp","직원","emp"),C("date","일자","date"),C("in","출근","time"),C("out","퇴근","time")]},
  ot:{t:"초과근무 결재",n:"상태를 승인 또는 반려로 바꾸면 직원 화면, 근태현황, 알림에 반영됩니다.",cols:[C("emp","신청자","emp"),C("date","신청일","date"),C("wdate","근무일","date"),C("type","유형","ott"),C("from","시작","time"),C("to","종료","time"),C("hours","시간","num"),C("why","사유"),C("status","상태","mv"),C("dec","처리일시")]},
  cert:{t:"증명서 결재",n:"상태를 발급 완료로 바꾸면 직원 화면의 증명서 발급 목록에서 문서를 열 수 있습니다. 반려하면 알림으로 전달됩니다.",cols:[C("emp","신청자","emp"),C("date","신청일","date"),C("type","종류","ct"),C("purpose","용도·제출처"),C("copies","부수","num"),C("status","상태","cs"),C("dec","처리일시")]},
- notice:{t:"공지사항",n:"공지사항은 이 화면에서만 등록·수정·삭제할 수 있습니다. 구분을 고정으로 두면 목록 맨 위에 표시됩니다.",cols:[C("title","제목"),C("body","내용","area"),C("date","게시일","date"),C("pin","구분","pin")]}};
+ notice:{t:"공지사항",n:"공지사항은 이 화면에서만 등록·수정·삭제할 수 있습니다. 구분을 고정으로 두면 목록 맨 위에 표시됩니다.",cols:[C("title","제목"),C("body","내용","area"),C("date","게시일","date"),C("pin","구분","pin"),C("file","첨부 파일 주소(URL)"),C("fname","첨부 파일 이름")]}};
 const BL={dept:()=>DB.dept[0]?DB.dept[0].id:"",emp:()=>DB.emp[0]?DB.emp[0].id:"",st:()=>"재직중",grp:()=>"mgmt",mv:()=>"결재 대기",bs:()=>"접수 대기",ys:()=>"신청 접수",pin:()=>"",cs:()=>"결재 대기",lt:()=>"연차",ott:()=>"연장",ct:()=>"재직증명서",date:today};
 const blank=s=>Object.fromEntries(SC[s].cols.map(x=>[x[0],BL[x[2]]?BL[x[2]]():x[2]=="num"?0:""]));
 const LST={dept:()=>D.map(d=>[d[0],d[1]]),emp:()=>DB.emp.map(e=>[e.id,e.name+" "+e.id]),st:()=>ST.map(x=>[x,x]),grp:()=>Object.entries(G),mv:()=>MV.map(x=>[x,x]),bs:()=>BS.map(x=>[x,x]),ys:()=>STG.map(x=>[x,x]),pin:()=>[["","일반"],["Y","고정"]],cs:()=>CS.map(x=>[x,x]),lt:()=>LT.map(x=>[x,x]),ott:()=>OTT.map(x=>[x,x]),ct:()=>CT.map(x=>[x,x])};
