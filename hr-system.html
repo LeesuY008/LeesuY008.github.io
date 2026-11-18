@@ -231,6 +231,7 @@ const pd=s=>{const[a,b,c]=s.split("-").map(Number);return new Date(a,b-1,c)};
 const wdays=(f,t)=>{let n=0,d=pd(f),e=pd(t),g=0;while(d<=e&&g++<400){if(d.getDay()%6)n++;d.setDate(d.getDate()+1)}return n};
 const isLD=t=>t=="연차"||t.startsWith("반차");
 const hm=s=>{const[a,b]=(s||"0:0").split(":").map(Number);return a*60+b};
+const wkh=(f,t)=>{let a=hm(f),b=hm(t);if(b<a)b+=1440;const m=b-a-Math.max(0,Math.min(b,780)-Math.max(a,720));return Math.max(0,Math.round(m/6)/10)};
 const hrs=(f,t)=>{let m=hm(t)-hm(f);if(m<0)m+=1440;return Math.round(m/6)/10};
 const mon=s=>{const d=pd(s);d.setDate(d.getDate()-((d.getDay()+6)%7));return fmt(d)};
 const stc=s=>'<span class="st '+(MVC[s]||"pend")+'">'+esc(s)+'</span>';
@@ -261,7 +262,7 @@ function vAtt(){
  const ys=[...new Set(DB.att.filter(r=>r.emp==curId).map(r=>r.date.slice(0,4)).concat(String(T.getFullYear())))].sort().reverse();
  const last=new Date(+y,+mo,0).getDate(),lm=leaveMap(curId),ts=today(),att={},ot={};
  DB.att.filter(r=>r.emp==curId).forEach(r=>att[r.date]=r);
- DB.ot.filter(r=>r.emp==curId&&r.status=="승인").forEach(r=>ot[r.wdate]=(ot[r.wdate]||0)+n0(r.hours));
+ const otr={};DB.ot.filter(r=>r.emp==curId&&r.status=="승인").forEach(r=>{ot[r.wdate]=(ot[r.wdate]||0)+n0(r.hours);(otr[r.wdate]=otr[r.wdate]||[]).push(r.from+"~"+r.to+"("+n0(r.hours)+"시간)")});
  let work=0,late=0,lv=0,oth=0;const rows=[];
  for(let d=1;d<=last;d++){const ds=y+"-"+mo+"-"+String(d).padStart(2,"0"),wd=pd(ds).getDay(),a=att[ds],l=lm[ds];let tag,note="";
   if(l){tag='<span class="st '+(l.st=="승인"?"vac":"pend")+'">'+(l.st=="승인"?"휴가":"휴가 신청 중")+" ("+esc(l.type)+')</span>';if(l.st=="승인")lv+=l.type.startsWith("반차")?.5:1}
@@ -269,8 +270,8 @@ function vAtt(){
   else if(wd%6==0)tag='<span class="st off">휴일</span>';
   else if(ds>ts)tag="-";
   else tag='<span class="st bad">기록 없음</span>';
-  if(ot[ds]){oth+=ot[ds];note="초과근무 "+ot[ds]+"시간"}
-  rows.push([ds.slice(5)+" ("+WD[wd]+")",tag,a?esc(a.in):"-",a?esc(a.out):"-",a?hrs(a.in,a.out)+"시간":"-",note])}
+  if(ot[ds]){oth+=ot[ds];note="초과근무 "+otr[ds].join(", ")}
+  rows.push([ds.slice(5)+" ("+WD[wd]+")",tag,a?esc(a.in):"-",a?esc(a.out):"-",a?wkh(a.in,a.out)+"시간":"-",note])}
  return '<div class="box"><div class="row" style="align-items:flex-end;margin:0"><label>연도<select id="ay">'+opts(ys.map(x=>[x,x+"년"]),y)+'</select></label><label>월<select id="amo">'+opts(Array.from({length:12},(_,i)=>[String(i+1).padStart(2,"0"),(i+1)+"월"]),mo)+'</select></label></div></div><div class="stats">'+[["출근 일수",work+"일"],["휴가 일수",lv+"일"],["지각",late+"회"],["초과근무(승인)",Math.round(oth*10)/10+"시간"]].map(x=>stat(x[0],x[1])).join("")+'</div><div class="box">'+tbl(["일자","구분","출근","퇴근","근무시간","비고"],rows)+'</div><p class="note">승인된 휴가와 초과근무는 신청 내역이 자동으로 반영됩니다. 공휴일은 반영하지 않고 토·일만 휴일로 표시하며, 기준 출근시각은 09:00입니다(샘플).</p>'}
 function vLeave(){
  const Y=String(new Date().getFullYear()),s=lstat(curId,Y),rem=s.g-s.used,d=DB.leave.filter(x=>x.emp==curId);
