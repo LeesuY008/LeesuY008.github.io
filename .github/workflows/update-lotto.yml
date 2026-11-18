@@ -8,6 +8,7 @@ on:
 
 permissions:
   contents: write
+  pages: write
 
 jobs:
   update:
@@ -33,3 +34,7 @@ jobs:
           git add lotto_data.js
           git commit -m "로또 당첨번호 자동 업데이트"
           git push
+          # 봇이 올린 커밋도 사이트에 바로 반영되도록 배포 요청
+          gh api -X POST "repos/${{ github.repository }}/pages/builds" || true
+        env:
+          GH_TOKEN: ${{ github.token }}
