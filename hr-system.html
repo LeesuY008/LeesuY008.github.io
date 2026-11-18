@@ -454,7 +454,7 @@ $("#q").addEventListener("keydown",e=>{
  if(e.key!="Enter")return;const v=e.target.value.trim();if(!v)return;
  const d=D.find(x=>x[1].includes(v)||x[3].some(m=>m[0].includes(v)));
  if(d){tab="dept";sub.dept="net";selD=d[0];render()}else e.target.placeholder="검색 결과가 없습니다"});
-function setMode(){ADMIN=false;curId=ADMIN?(LS("hr_cur")||gid()):gid();$("#who").hidden=!ADMIN;$("#q").hidden=!ADMIN;if(ADMIN)tab="admin";else if(tab=="admin")tab="info"}
+function setMode(){ADMIN=location.hash.slice(1)=="admin";curId=ADMIN?(LS("hr_cur")||gid()):gid();$("#who").hidden=!ADMIN;$("#q").hidden=!ADMIN;if(ADMIN)tab="admin";else if(tab=="admin")tab="info"}
 addEventListener("hashchange",()=>{const h=location.hash.slice(1);if((h=="admin")!=ADMIN){setMode();selM=null;render()}else if(!ADMIN&&SUBS[h]&&h!=tab){tab=h;render()}});
 const h0=location.hash.slice(1);setMode();if(!ADMIN&&SUBS[h0])tab=h0;
 addEventListener("storage",e=>{if(e.key!="hr_db")return;try{DB=Object.assign(DEF(),JSON.parse(e.newValue)||{});derive();const a=document.activeElement;if(a&&/INPUT|TEXTAREA|SELECT/.test(a.tagName))bell();else render()}catch(x){}});
