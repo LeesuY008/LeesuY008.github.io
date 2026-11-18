@@ -262,17 +262,19 @@ function vAtt(){
  const ys=[...new Set(DB.att.filter(r=>r.emp==curId).map(r=>r.date.slice(0,4)).concat(String(T.getFullYear())))].sort().reverse();
  const last=new Date(+y,+mo,0).getDate(),lm=leaveMap(curId),ts=today(),att={},ot={};
  DB.att.filter(r=>r.emp==curId).forEach(r=>att[r.date]=r);
- const otr={};DB.ot.filter(r=>r.emp==curId&&r.status=="승인").forEach(r=>{ot[r.wdate]=(ot[r.wdate]||0)+n0(r.hours);(otr[r.wdate]=otr[r.wdate]||[]).push(r.from+"~"+r.to+"("+n0(r.hours)+"시간)")});
- let work=0,late=0,lv=0,oth=0;const rows=[];
+ const otr={};DB.ot.filter(r=>r.emp==curId&&r.status=="승인").forEach(r=>{ot[r.wdate]=(ot[r.wdate]||0)+n0(r.hours);(otr[r.wdate]=otr[r.wdate]||[]).push(r)});
+ let work=0,late=0,lv=0,oth=0,wsum=0;const rows=[];
  for(let d=1;d<=last;d++){const ds=y+"-"+mo+"-"+String(d).padStart(2,"0"),wd=pd(ds).getDay(),a=att[ds],l=lm[ds];let tag,note="";
   if(l){tag='<span class="st '+(l.st=="승인"?"vac":"pend")+'">'+(l.st=="승인"?"휴가":"휴가 신청 중")+" ("+esc(l.type)+')</span>';if(l.st=="승인")lv+=l.type.startsWith("반차")?.5:1}
   else if(a){work++;const lt=a.in>WORKIN;if(lt)late++;tag='<span class="st '+(lt?"pend":"ok")+'">'+(lt?"지각":"정상")+"</span>"}
   else if(wd%6==0)tag='<span class="st off">휴일</span>';
   else if(ds>ts)tag="-";
   else tag='<span class="st bad">기록 없음</span>';
-  if(ot[ds]){oth+=ot[ds];note="초과근무 "+otr[ds].join(", ")}
-  rows.push([ds.slice(5)+" ("+WD[wd]+")",tag,a?esc(a.in):"-",a?esc(a.out):"-",a?wkh(a.in,a.out)+"시간":"-",note])}
- return '<div class="box"><div class="row" style="align-items:flex-end;margin:0"><label>연도<select id="ay">'+opts(ys.map(x=>[x,x+"년"]),y)+'</select></label><label>월<select id="amo">'+opts(Array.from({length:12},(_,i)=>[String(i+1).padStart(2,"0"),(i+1)+"월"]),mo)+'</select></label></div></div><div class="stats">'+[["출근 일수",work+"일"],["휴가 일수",lv+"일"],["지각",late+"회"],["초과근무(승인)",Math.round(oth*10)/10+"시간"]].map(x=>stat(x[0],x[1])).join("")+'</div><div class="box">'+tbl(["일자","구분","출근","퇴근","근무시간","비고"],rows)+'</div><p class="note">승인된 휴가와 초과근무는 신청 내역이 자동으로 반영됩니다. 공휴일은 반영하지 않고 토·일만 휴일로 표시하며, 기준 출근시각은 09:00입니다(샘플).</p>'}
+  let wv=0;if(a){wv=wkh(a.in,a.out);(otr[ds]||[]).forEach(r=>{let x=hm(r.from),y=hm(r.to);if(y<x)y+=1440;const i=hm(a.in);let o=hm(a.out);if(o<i)o+=1440;wv-=Math.max(0,Math.min(y,o)-Math.max(x,i))/60});wv=Math.max(0,Math.round(wv*10)/10);wsum+=wv}
+  if(ot[ds]){oth+=ot[ds];note=otr[ds].map(r=>r.from+"~"+r.to).join(", ")}
+  rows.push([ds.slice(5)+" ("+WD[wd]+")",tag,a?esc(a.in):"-",a?esc(a.out):"-",a?wv+"시간":"-",ot[ds]?ot[ds]+"시간":"-",note])}
+ rows.push(["<b>합계</b>","","","","<b>"+Math.round(wsum*10)/10+"시간</b>","<b>"+Math.round(oth*10)/10+"시간</b>","<b>근무+초과 "+Math.round((wsum+oth)*10)/10+"시간</b>"]);
+ return '<div class="box"><div class="row" style="align-items:flex-end;margin:0"><label>연도<select id="ay">'+opts(ys.map(x=>[x,x+"년"]),y)+'</select></label><label>월<select id="amo">'+opts(Array.from({length:12},(_,i)=>[String(i+1).padStart(2,"0"),(i+1)+"월"]),mo)+'</select></label></div></div><div class="stats">'+[["출근 일수",work+"일"],["휴가 일수",lv+"일"],["지각",late+"회"],["초과근무(승인)",Math.round(oth*10)/10+"시간"]].map(x=>stat(x[0],x[1])).join("")+'</div><div class="box">'+tbl(["일자","구분","출근","퇴근","근무시간","초과근무시간","비고"],rows)+'</div><p class="note">승인된 휴가와 초과근무는 신청 내역이 자동으로 반영됩니다. 공휴일은 반영하지 않고 토·일만 휴일로 표시하며, 기준 출근시각은 09:00입니다(샘플).</p>'}
 function vLeave(){
  const Y=String(new Date().getFullYear()),s=lstat(curId,Y),rem=s.g-s.used,d=DB.leave.filter(x=>x.emp==curId);
  return '<div class="stats">'+[[Y+"년 부여",s.has?s.g+"일":"미등록"],["사용 (승인)",s.used+"일"],["결재 대기",s.pend+"일"],["잔여",s.has?rem+"일":"-"]].map(x=>stat(x[0],x[1])).join("")+'</div><div class="box"><h3>휴가 신청</h3><form id="lf"><div class="row"><label>유형<select name="type">'+opts(LT.map(x=>[x,x]),"연차")+'</select></label><label>시작일<input type="date" name="from" required></label><label>종료일<input type="date" name="to" required></label><label>일수<input name="days" value="-" disabled></label></div><label>사유<textarea name="why" required></textarea></label><p><button class="btn cta">신청하기</button></p></form></div><div class="box"><h3>신청 내역</h3>'+(d.length?tbl(["신청일","유형","기간","일수","사유","상태"],d.map(r=>[esc(r.date),esc(r.type),esc(r.from)+(r.to!=r.from?" ~ "+esc(r.to):""),n0(r.days)+"일",esc(r.why),stc(r.status)])):'<div class="empty">신청 내역이 없습니다.</div>')+'</div><p class="note">잔여 연차는 부여 일수에서 승인된 연차·반차를 뺀 값이며, 결재 대기 중인 일수까지 고려해 신청할 수 있습니다. 병가·경조휴가·기타는 연차에서 차감하지 않습니다(회사 규정에 따름). 법정 연차 일수는 근로기준법 제60조에 따르며 관리자가 부여 일수를 입력합니다. 공휴일은 반영하지 않고 토·일만 제외해 일수를 셉니다.</p>'}
