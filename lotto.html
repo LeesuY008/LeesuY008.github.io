@@ -8,9 +8,10 @@
   :root {
     --bg: #f4f5f8; --card: #fff; --text: #1d1f24; --muted: #6b7280; --line: #e5e7eb;
     --accent: #3b5bdb; --accent-soft: #e7ecff;
+    --tray1: #eef1f7; --tray2: #e2e7f1; --slot: rgba(30,40,70,.08);
   }
   @media (prefers-color-scheme: dark) {
-    :root { --bg: #14161b; --card: #1e2128; --text: #e8eaf0; --muted: #9aa1ad; --line: #2e323b; --accent: #7c96ff; --accent-soft: #262d45; }
+    :root { --bg: #14161b; --card: #1e2128; --text: #e8eaf0; --muted: #9aa1ad; --line: #2e323b; --accent: #7c96ff; --accent-soft: #262d45; --tray1: #252a35; --tray2: #1b1f28; --slot: rgba(0,0,0,.35); }
   }
   * { box-sizing: border-box; }
   body { margin: 0; background: var(--bg); color: var(--text); font-family: -apple-system, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif; }
@@ -33,11 +34,20 @@
   .balls { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; min-height: 40px; }
   .ball { width: 52px; height: 52px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-weight: 800; font-size: 19px; color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,.4); box-shadow: inset -4px -6px 10px rgba(0,0,0,.2), inset 3px 4px 6px rgba(255,255,255,.35), 0 2px 6px rgba(0,0,0,.15); flex-shrink: 0; }
   .ball.sm { width: 34px; height: 34px; font-size: 14px; }
-  .ball.pop { animation: pop .5s cubic-bezier(.3,1.6,.5,1); }
-  @keyframes pop { 0% { transform: translateY(-40px) scale(.3); opacity: 0; } 100% { transform: none; opacity: 1; } }
+  .ball.land { animation: land .55s cubic-bezier(.3,1.5,.5,1); position: relative; overflow: hidden; }
+  .ball.land::after { content: ""; position: absolute; inset: 0; border-radius: 50%; background: linear-gradient(120deg, transparent 30%, rgba(255,255,255,.85) 50%, transparent 70%); transform: translateX(-120%); animation: shine .9s .15s ease-out forwards; }
+  @keyframes land { 0% { transform: scale(1.3); } 45% { transform: scale(.9); } 75% { transform: scale(1.05); } 100% { transform: scale(1); } }
+  @keyframes shine { to { transform: translateX(120%); } }
+  .ball.resort { animation: resort .45s ease-out; }
+  @keyframes resort { 0% { transform: rotateY(90deg); } 100% { transform: rotateY(0); } }
+  .confetti { position: fixed; width: 8px; height: 12px; border-radius: 2px; z-index: 60; pointer-events: none; margin: -6px 0 0 -4px; }
   .ball.empty { background: var(--line); box-shadow: inset 0 2px 6px rgba(0,0,0,.12); color: var(--muted); text-shadow: none; }
   .plus { font-size: 22px; color: var(--muted); font-weight: 700; }
-  .c1 { background: #fbc400; } .c2 { background: #69c8f2; } .c3 { background: #ff7272; } .c4 { background: #aaaaaa; } .c5 { background: #b0d840; }
+  .c1 { --c: #fbc400; } .c2 { --c: #4fb8ea; } .c3 { --c: #ff6363; } .c4 { --c: #9a9a9a; } .c5 { --c: #9ccc2e; }
+  .c1, .c2, .c3, .c4, .c5 {
+    background: radial-gradient(circle at 32% 26%, rgba(255,255,255,.85) 0, rgba(255,255,255,0) 30%),
+                radial-gradient(circle at 40% 35%, var(--c) 40%, color-mix(in srgb, var(--c) 62%, #000) 100%);
+  }
   .muted { color: var(--muted); font-size: 13px; }
   table { width: 100%; border-collapse: collapse; font-size: 14px; }
   th, td { padding: 8px 6px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: middle; }
@@ -74,8 +84,19 @@
   @media (max-width: 720px) { .machine { grid-template-columns: 1fr; } }
   .drum-wrap { position: relative; width: 100%; max-width: 380px; margin: 0 auto; }
   #drum { width: 100%; height: auto; display: block; }
-  .status { font-size: 15px; font-weight: 600; min-height: 22px; margin-bottom: 12px; }
-  .tray { background: var(--accent-soft); border-radius: 999px; padding: 10px 14px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .status { font-size: 16px; font-weight: 600; min-height: 34px; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+  .status b { font-size: 28px; color: var(--accent); animation: land .5s cubic-bezier(.3,1.5,.5,1); display: inline-block; }
+  .tray { background: linear-gradient(180deg, var(--tray1), var(--tray2)); border-radius: 18px; padding: 14px 16px 10px; display: flex; gap: 8px; align-items: flex-start; flex-wrap: wrap; box-shadow: inset 0 2px 10px rgba(0,0,0,.12); }
+  .slot { width: 46px; height: 46px; border-radius: 50%; background: var(--slot); box-shadow: inset 0 3px 7px rgba(0,0,0,.22); display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .slot .ball { width: 46px; height: 46px; font-size: 18px; }
+  .tray .plus { line-height: 46px; }
+  @media (max-width: 420px) {
+    .tray { gap: 5px; padding: 12px 10px 8px; }
+    .slot, .slot .ball { width: 36px; height: 36px; font-size: 15px; }
+    .tray .plus { line-height: 36px; font-size: 18px; }
+  }
+  .bonus-wrap { display: inline-flex; flex-direction: column; align-items: center; gap: 3px; }
+  .bonus-wrap small { font-size: 11px; color: var(--muted); }
 </style>
 </head>
 <body>
@@ -96,7 +117,7 @@
     <div class="card">
       <h2>추첨하기 <span class="muted" id="roundLabel"></span></h2>
       <div class="machine">
-        <div class="drum-wrap"><canvas id="drum" width="380" height="400"></canvas></div>
+        <div class="drum-wrap"><canvas id="drum" width="380" height="470"></canvas></div>
         <div>
           <div class="status" id="status">추첨 시작을 누르세요</div>
           <div class="tray" id="tray"></div>
@@ -300,22 +321,20 @@ function showTab(name) {
    ========================================================= */
 const cv = document.getElementById('drum');
 const ctx = cv.getContext('2d');
-const W = 380, H = 400, CX = 190, CY = 225, R = 165, BR = 14;
-const TUBE_W = 34, TUBE_TOP = 6, EXIT_Y = CY - R;
+const W = 380, H = 470, CX = 190, CY = 212, R = 156, BR = 14;
+const TUBE_W = 36, TUBE_TOP = 16, EXIT_Y = CY - R;
 (function setupHiDPI() {
-  const dpr = window.devicePixelRatio || 1;
+  const dpr = Math.min(2, window.devicePixelRatio || 1);
   cv.width = W * dpr; cv.height = H * dpr;
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 })();
 
-let balls = [];
-let blower = 0;            // 0 = 정지, 1 = 최대 바람
-let blowerTarget = 0;
-let drawing = false;
+let balls = [], bubbles = [];
+let blower = 0, blowerTarget = 0, drawing = false, drawnCount = 0;
+const isDark = () => matchMedia('(prefers-color-scheme: dark)').matches;
 
 function resetBalls() {
   balls = [];
-  // 바닥에 쌓인 상태로 배치
   let row = 0, placed = 0;
   while (placed < 45) {
     const y = CY + R - BR - 2 - row * (BR * 1.75);
@@ -323,39 +342,43 @@ function resetBalls() {
     const count = Math.max(1, Math.floor((half * 2) / (BR * 2.05)));
     for (let i = 0; i < count && placed < 45; i++) {
       const x = CX - half + BR + i * ((half * 2 - BR * 2) / Math.max(1, count - 1)) + (row % 2 ? 3 : 0);
-      balls.push({ n: placed + 1, x, y, vx: 0, vy: 0, state: 'drum', a: Math.random() * 6.28 });
+      balls.push({ n: placed + 1, x, y, vx: 0, vy: 0, state: 'drum', ax: Math.random() * 6.28, ay: Math.random() * 6.28 });
       placed++;
     }
     row++;
   }
-  // 번호가 섞여 보이도록 위치를 무작위로 교환
   for (let i = balls.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
     [balls[i].n, balls[j].n] = [balls[j].n, balls[i].n];
   }
 }
+// 지난 추첨에서 뽑힌 공을 드럼 위쪽에서 다시 떨어뜨려 넣음
+function returnBalls() {
+  balls.filter(b => b.state !== 'drum').forEach((b, i) => Object.assign(b, {
+    state: 'drum', x: CX + (i - 3) * (BR * 2.2), y: CY - R + BR + 12, vx: (Math.random() - 0.5) * 60, vy: 0,
+  }));
+}
 
 function physics(dt) {
-  blower += (blowerTarget - blower) * Math.min(1, dt * 3);
-  const g = 1100;
+  blower += (blowerTarget - blower) * Math.min(1, dt * 2.5);
+  const g = 1100, damp = blower > 0.05 ? 0.996 : 0.985;
   const active = balls.filter(b => b.state === 'drum');
   for (const b of active) {
     b.vy += g * dt;
     if (blower > 0.02 && b.y > CY) {
-      // 드럼 아래쪽에서 부는 바람: 공을 순간적으로 위로 튕겨 올림 (위쪽은 중력으로 다시 떨어짐)
-      const depth = (b.y - CY) / R;                         // 0 ~ 1 (바닥일수록 강함)
+      // 드럼 아래쪽에서 부는 바람: 공을 순간적으로 위로 튕겨 올림
+      const depth = (b.y - CY) / R;
       if (Math.random() < blower * dt * (3 + 6 * depth)) {
         b.vy = -(450 + Math.random() * 550) * blower;
         b.vx = (Math.random() - 0.5) * 700 * blower;
       } else {
-        b.vy -= blower * 600 * depth * dt;                   // 약한 상승 기류
+        b.vy -= blower * 600 * depth * dt;
       }
     }
-    b.vx *= 0.995; b.vy *= 0.995;
+    b.vx *= damp; b.vy *= damp;
     b.x += b.vx * dt; b.y += b.vy * dt;
-    b.a += b.vx * dt * 0.05;
-    // 원통 벽 충돌
-    const dx = b.x - CX, dy = b.y - CY, d = Math.hypot(dx, dy), lim = R - BR - 1;
+    b.ax += b.vx * dt / BR; b.ay += b.vy * dt / BR;   // 굴러가는 회전
+    const dx = b.x - CX, dy = b.y - CY, d = Math.hypot(dx, dy), lim = R - BR - 3;
     if (d > lim) {
       const nx = dx / d, ny = dy / d;
       b.x = CX + nx * lim; b.y = CY + ny * lim;
@@ -363,7 +386,6 @@ function physics(dt) {
       if (vn > 0) { b.vx -= 1.75 * vn * nx; b.vy -= 1.75 * vn * ny; }
     }
   }
-  // 공끼리 충돌
   for (let i = 0; i < active.length; i++) {
     for (let j = i + 1; j < active.length; j++) {
       const a = active[i], b = active[j];
@@ -372,137 +394,329 @@ function physics(dt) {
         const d = Math.sqrt(d2), nx = dx / d, ny = dy / d, ov = (min - d) / 2;
         a.x -= nx * ov; a.y -= ny * ov; b.x += nx * ov; b.y += ny * ov;
         const rel = (b.vx - a.vx) * nx + (b.vy - a.vy) * ny;
-        if (rel < 0) {
-          const imp = -rel * 0.9;
-          a.vx -= imp * nx; a.vy -= imp * ny; b.vx += imp * nx; b.vy += imp * ny;
-        }
+        if (rel < 0) { const imp = -rel * 0.9; a.vx -= imp * nx; a.vy -= imp * ny; b.vx += imp * nx; b.vy += imp * ny; }
       }
     }
   }
+  // 공기 방울
+  if (blower > 0.05 && Math.random() < blower * dt * 45) {
+    bubbles.push({ x: CX + (Math.random() - 0.5) * 70, y: CY + R - 16, vy: -(90 + Math.random() * 160), r: 1.5 + Math.random() * 3, life: 1, w: Math.random() * 6 });
+  }
+  for (const p of bubbles) { p.y += p.vy * dt; p.x += Math.sin(p.y / 18 + p.w) * 0.4; p.life -= dt * 0.7; }
+  bubbles = bubbles.filter(p => p.life > 0 && Math.hypot(p.x - CX, p.y - CY) < R - 6);
 }
 
-function drawBallAt(x, y, n, rot = 0, r = BR) {
-  const grd = ctx.createRadialGradient(x - r * 0.4, y - r * 0.45, r * 0.15, x, y, r);
-  grd.addColorStop(0, '#ffffff');
-  grd.addColorStop(0.25, COLORS[colorIdx(n)]);
-  grd.addColorStop(1, shade(COLORS[colorIdx(n)], -0.35));
-  ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fillStyle = grd; ctx.fill();
-  ctx.save(); ctx.translate(x, y); ctx.rotate(Math.sin(rot) * 0.6);
-  ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(0, 0, r * 0.62, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = '#222'; ctx.font = `bold ${Math.round(r * 0.78)}px -apple-system, sans-serif`;
-  ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(n, 0, 1);
+/* ---------- 그리기 ---------- */
+function tint(hex, p) {
+  const v = parseInt(hex.slice(1), 16), c = [v >> 16, (v >> 8) & 255, v & 255];
+  return `rgb(${c.map(x => Math.round(p >= 0 ? x + (255 - x) * p : x * (1 + p))).join(',')})`;
+}
+// 번호는 공 양쪽 면에 인쇄되어 있다고 보고, 앞쪽을 향한 면을 그림
+const faceAngle = a => { const m = ((a + Math.PI / 2) % Math.PI + Math.PI) % Math.PI; return m - Math.PI / 2; };
+
+function drawBall(x, y, n, ax = 0, ay = 0, r = BR) {
+  const col = COLORS[colorIdx(n)];
+  ctx.save();
+  ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2);
+  const g = ctx.createRadialGradient(x - r * .35, y - r * .4, r * .05, x, y, r * 1.05);
+  g.addColorStop(0, tint(col, .6)); g.addColorStop(.45, col); g.addColorStop(1, tint(col, -.45));
+  ctx.fillStyle = g; ctx.fill();
+  ctx.clip();
+  const fa = faceAngle(ax), fb = faceAngle(ay);
+  const sx = Math.cos(fa), sy = Math.cos(fb);
+  if (sx > .04 && sy > .04) {
+    ctx.save();
+    ctx.translate(x + Math.sin(fa) * r * .7, y + Math.sin(fb) * r * .7);
+    ctx.scale(sx, sy);
+    ctx.beginPath(); ctx.arc(0, 0, r * .58, 0, Math.PI * 2);
+    ctx.fillStyle = '#fbfbf8'; ctx.fill();
+    ctx.fillStyle = '#1d2230';
+    ctx.font = `800 ${Math.round(r * .74)}px -apple-system, "Apple SD Gothic Neo", sans-serif`;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(n, 0, r * .05);
+    ctx.restore();
+  }
+  // 구 음영 + 반사광 (라벨 위까지 덮어서 입체감)
+  const sh = ctx.createRadialGradient(x - r * .3, y - r * .35, r * .25, x, y, r);
+  sh.addColorStop(0, 'rgba(0,0,0,0)'); sh.addColorStop(.75, 'rgba(0,0,0,.06)'); sh.addColorStop(1, 'rgba(0,0,0,.38)');
+  ctx.fillStyle = sh; ctx.fillRect(x - r, y - r, r * 2, r * 2);
+  const hl = ctx.createRadialGradient(x - r * .42, y - r * .48, 0, x - r * .42, y - r * .48, r * .5);
+  hl.addColorStop(0, 'rgba(255,255,255,.9)'); hl.addColorStop(1, 'rgba(255,255,255,0)');
+  ctx.fillStyle = hl; ctx.fillRect(x - r, y - r, r * 2, r * 2);
   ctx.restore();
 }
-function shade(hex, p) {
-  const v = parseInt(hex.slice(1), 16);
-  const f = c => Math.max(0, Math.min(255, Math.round(c + c * p)));
-  return `rgb(${f(v >> 16)},${f((v >> 8) & 255)},${f(v & 255)})`;
+
+function metal(x0, y0, x1, y1) {
+  const m = ctx.createLinearGradient(x0, y0, x1, y1);
+  m.addColorStop(0, '#596173'); m.addColorStop(.18, '#d9dee8'); m.addColorStop(.38, '#8b93a4');
+  m.addColorStop(.62, '#eef1f6'); m.addColorStop(.85, '#7c8495'); m.addColorStop(1, '#4b5262');
+  return m;
+}
+function roundRect(x, y, w, h, r) {
+  ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
 }
 
-function render(now) {
-  ctx.clearRect(0, 0, W, H);
-  const dark = matchMedia('(prefers-color-scheme: dark)').matches;
-  // 배출 튜브
-  ctx.fillStyle = dark ? 'rgba(160,180,220,.12)' : 'rgba(120,140,190,.12)';
-  ctx.strokeStyle = dark ? 'rgba(180,200,240,.45)' : 'rgba(80,100,150,.35)';
-  ctx.lineWidth = 2;
-  ctx.beginPath(); ctx.rect(CX - TUBE_W / 2, TUBE_TOP, TUBE_W, EXIT_Y - TUBE_TOP + 4); ctx.fill(); ctx.stroke();
-  // 유리 드럼
-  const glass = ctx.createRadialGradient(CX - 60, CY - 70, 20, CX, CY, R);
-  glass.addColorStop(0, dark ? 'rgba(255,255,255,.10)' : 'rgba(255,255,255,.9)');
-  glass.addColorStop(1, dark ? 'rgba(120,150,220,.10)' : 'rgba(170,190,235,.25)');
-  ctx.beginPath(); ctx.arc(CX, CY, R, 0, Math.PI * 2); ctx.fillStyle = glass; ctx.fill();
-  ctx.lineWidth = 4; ctx.strokeStyle = dark ? 'rgba(180,200,240,.5)' : 'rgba(80,100,150,.45)'; ctx.stroke();
-  // 바람 표시
+function drawBase() {
+  const top = CY + R - 30, bot = H - 22;
+  // 바닥 그림자
+  const sg = ctx.createRadialGradient(CX, H - 14, 10, CX, H - 14, 150);
+  sg.addColorStop(0, 'rgba(0,0,0,.28)'); sg.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = sg; ctx.beginPath(); ctx.ellipse(CX, H - 14, 150, 14, 0, 0, Math.PI * 2); ctx.fill();
+  // 받침대 몸체
+  ctx.beginPath();
+  ctx.moveTo(CX - 62, top); ctx.lineTo(CX + 62, top);
+  ctx.quadraticCurveTo(CX + 80, bot - 30, CX + 128, bot - 6);
+  ctx.quadraticCurveTo(CX + 134, bot, CX + 122, bot);
+  ctx.lineTo(CX - 122, bot);
+  ctx.quadraticCurveTo(CX - 134, bot, CX - 128, bot - 6);
+  ctx.quadraticCurveTo(CX - 80, bot - 30, CX - 62, top);
+  ctx.closePath();
+  ctx.fillStyle = metal(CX - 130, 0, CX + 130, 0); ctx.fill();
+  ctx.strokeStyle = 'rgba(0,0,0,.25)'; ctx.lineWidth = 1; ctx.stroke();
+  // 표시 패널
+  roundRect(CX - 78, bot - 46, 156, 34, 8);
+  const pg = ctx.createLinearGradient(0, bot - 46, 0, bot - 12);
+  pg.addColorStop(0, '#1b2030'); pg.addColorStop(1, '#0d1018');
+  ctx.fillStyle = pg; ctx.fill();
+  ctx.strokeStyle = 'rgba(255,255,255,.18)'; ctx.stroke();
+  ctx.fillStyle = 'rgba(255,255,255,.75)'; ctx.font = '700 9px -apple-system, sans-serif';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('LOTTO 6/45', CX, bot - 37);
+  for (let i = 0; i < 7; i++) {
+    const x = CX - 54 + i * 18 + (i === 6 ? 6 : 0), y = bot - 22, on = i < drawnCount;
+    ctx.beginPath(); ctx.arc(x, y, 4, 0, Math.PI * 2);
+    ctx.fillStyle = on ? (i === 6 ? '#ff6b6b' : '#ffd43b') : '#2d3446'; ctx.fill();
+    if (on) { ctx.save(); ctx.shadowColor = i === 6 ? '#ff6b6b' : '#ffd43b'; ctx.shadowBlur = 8; ctx.fill(); ctx.restore(); }
+  }
+  // 송풍 표시등
+  ctx.beginPath(); ctx.arc(CX + 66, bot - 37, 3, 0, Math.PI * 2);
+  ctx.fillStyle = blower > 0.1 ? '#51cf66' : '#3a4152'; ctx.fill();
+}
+
+function drawDrumBack(now) {
+  const dark = isDark();
+  const g = ctx.createRadialGradient(CX - 30, CY - 40, 20, CX, CY, R);
+  g.addColorStop(0, dark ? 'rgba(70,90,130,.35)' : 'rgba(245,249,255,.9)');
+  g.addColorStop(.75, dark ? 'rgba(40,55,90,.45)' : 'rgba(214,226,246,.7)');
+  g.addColorStop(1, dark ? 'rgba(25,35,60,.7)' : 'rgba(170,190,225,.75)');
+  ctx.beginPath(); ctx.arc(CX, CY, R, 0, Math.PI * 2); ctx.fillStyle = g; ctx.fill();
+  // 송풍구
+  ctx.save();
+  const ng = ctx.createLinearGradient(CX - 40, 0, CX + 40, 0);
+  ng.addColorStop(0, '#3a4152'); ng.addColorStop(.5, '#6c7486'); ng.addColorStop(1, '#3a4152');
+  ctx.fillStyle = ng; ctx.beginPath(); ctx.ellipse(CX, CY + R - 6, 40, 7, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = 'rgba(0,0,0,.35)'; ctx.lineWidth = 1;
+  for (let i = -3; i <= 3; i++) { ctx.beginPath(); ctx.moveTo(CX + i * 10, CY + R - 11); ctx.lineTo(CX + i * 10, CY + R - 1); ctx.stroke(); }
+  ctx.restore();
+  // 바람 기류
   if (blower > 0.05) {
-    ctx.save(); ctx.globalAlpha = blower * 0.35; ctx.strokeStyle = '#7aa2ff'; ctx.lineWidth = 2;
-    for (let i = 0; i < 6; i++) {
-      const x = CX - 50 + i * 20, t = (now / 4 + i * 37) % 60;
-      ctx.beginPath(); ctx.moveTo(x, CY + R - 8 - t); ctx.lineTo(x + Math.sin(now / 90 + i) * 4, CY + R - 28 - t); ctx.stroke();
+    ctx.save();
+    ctx.beginPath(); ctx.arc(CX, CY, R - 4, 0, Math.PI * 2); ctx.clip();
+    const wg = ctx.createLinearGradient(0, CY + R, 0, CY - R * 0.2);
+    wg.addColorStop(0, `rgba(140,180,255,${0.28 * blower})`); wg.addColorStop(1, 'rgba(140,180,255,0)');
+    ctx.fillStyle = wg;
+    ctx.beginPath(); ctx.moveTo(CX - 40, CY + R); ctx.lineTo(CX - 110, CY - R * 0.2); ctx.lineTo(CX + 110, CY - R * 0.2); ctx.lineTo(CX + 40, CY + R); ctx.fill();
+    for (const p of bubbles) {
+      ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+      ctx.strokeStyle = `rgba(255,255,255,${0.55 * p.life})`; ctx.lineWidth = 1; ctx.stroke();
     }
     ctx.restore();
   }
-  // 공
-  for (const b of balls) {
-    if (b.state === 'drum') drawBallAt(b.x, b.y, b.n, b.a);
+}
+
+function drawDrumFront() {
+  const dark = isDark();
+  ctx.save();
+  ctx.beginPath(); ctx.arc(CX, CY, R, 0, Math.PI * 2); ctx.clip();
+  // 안쪽 가장자리 그림자
+  const ig = ctx.createRadialGradient(CX, CY, R * .82, CX, CY, R);
+  ig.addColorStop(0, 'rgba(0,20,60,0)'); ig.addColorStop(1, dark ? 'rgba(0,0,0,.35)' : 'rgba(40,70,130,.22)');
+  ctx.fillStyle = ig; ctx.fillRect(CX - R, CY - R, R * 2, R * 2);
+  // 유리 반사광
+  ctx.save(); ctx.translate(CX - 62, CY - 88); ctx.rotate(-0.62);
+  const hg = ctx.createLinearGradient(0, -24, 0, 24);
+  hg.addColorStop(0, 'rgba(255,255,255,0)'); hg.addColorStop(.45, `rgba(255,255,255,${dark ? .16 : .55})`); hg.addColorStop(1, 'rgba(255,255,255,0)');
+  ctx.fillStyle = hg; ctx.beginPath(); ctx.ellipse(0, 0, 78, 22, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.restore();
+  ctx.beginPath(); ctx.arc(CX - 104, CY - 30, 5, 0, Math.PI * 2); ctx.fillStyle = `rgba(255,255,255,${dark ? .35 : .8})`; ctx.fill();
+  ctx.beginPath(); ctx.arc(CX, CY, R - 12, 0.25, 1.05);
+  ctx.strokeStyle = `rgba(255,255,255,${dark ? .15 : .45})`; ctx.lineWidth = 4; ctx.lineCap = 'round'; ctx.stroke();
+  ctx.restore();
+  // 금속 테두리
+  ctx.beginPath(); ctx.arc(CX, CY, R, 0, Math.PI * 2);
+  ctx.strokeStyle = metal(CX - R, CY - R, CX + R, CY + R); ctx.lineWidth = 9; ctx.stroke();
+  ctx.beginPath(); ctx.arc(CX, CY, R - 5, 0, Math.PI * 2);
+  ctx.strokeStyle = 'rgba(255,255,255,.35)'; ctx.lineWidth = 1; ctx.stroke();
+  ctx.beginPath(); ctx.arc(CX, CY, R + 4.5, 0, Math.PI * 2);
+  ctx.strokeStyle = 'rgba(0,0,0,.25)'; ctx.lineWidth = 1; ctx.stroke();
+  // 볼트
+  for (let i = 0; i < 12; i++) {
+    const a = i / 12 * Math.PI * 2 + Math.PI / 12;
+    const bx = CX + Math.cos(a) * R, by = CY + Math.sin(a) * R;
+    const bg = ctx.createRadialGradient(bx - 1, by - 1, 0, bx, by, 2.6);
+    bg.addColorStop(0, '#fff'); bg.addColorStop(1, '#6b7385');
+    ctx.beginPath(); ctx.arc(bx, by, 2.4, 0, Math.PI * 2); ctx.fillStyle = bg; ctx.fill();
   }
-  // 배출 중인 공 (드럼 위에 그림)
+}
+
+function drawTube(back) {
+  const x = CX - TUBE_W / 2, y = TUBE_TOP, h = EXIT_Y - TUBE_TOP + 2;
+  if (back) {
+    const g = ctx.createLinearGradient(x, 0, x + TUBE_W, 0);
+    g.addColorStop(0, 'rgba(150,170,210,.30)'); g.addColorStop(.5, 'rgba(230,238,252,.20)'); g.addColorStop(1, 'rgba(120,140,190,.32)');
+    ctx.fillStyle = g; ctx.fillRect(x, y, TUBE_W, h);
+    return;
+  }
+  // 앞면 유리 반사 + 테두리
+  const hg = ctx.createLinearGradient(x, 0, x + TUBE_W, 0);
+  hg.addColorStop(0, 'rgba(255,255,255,0)'); hg.addColorStop(.22, 'rgba(255,255,255,.55)'); hg.addColorStop(.32, 'rgba(255,255,255,0)');
+  hg.addColorStop(.8, 'rgba(255,255,255,0)'); hg.addColorStop(.88, 'rgba(255,255,255,.25)'); hg.addColorStop(1, 'rgba(255,255,255,0)');
+  ctx.fillStyle = hg; ctx.fillRect(x, y, TUBE_W, h);
+  ctx.strokeStyle = 'rgba(90,105,140,.55)'; ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x, y + h); ctx.moveTo(x + TUBE_W, y); ctx.lineTo(x + TUBE_W, y + h); ctx.stroke();
+  // 위·아래 금속 고리
+  for (const cy of [TUBE_TOP - 2, EXIT_Y - 6]) {
+    roundRect(CX - TUBE_W / 2 - 6, cy, TUBE_W + 12, 10, 3);
+    ctx.fillStyle = metal(CX - TUBE_W / 2 - 6, 0, CX + TUBE_W / 2 + 6, 0); ctx.fill();
+    ctx.strokeStyle = 'rgba(0,0,0,.25)'; ctx.lineWidth = 1; ctx.stroke();
+  }
+}
+
+const easeInOut = t => t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+const toFront = a => Math.round(a / Math.PI) * Math.PI;
+
+function render(now) {
+  ctx.clearRect(0, 0, W, H);
+  drawBase();
+  drawDrumBack(now);
+  for (const b of balls) if (b.state === 'drum') drawBall(b.x, b.y, b.n, b.ax, b.ay);
+  drawDrumFront();
+  drawTube(true);
   for (const b of balls) {
     if (b.state !== 'out') continue;
-    const t = (now - b.t0) / b.dur;
-    let x, y, r = BR;
-    if (t < 0.55) { // 드럼 안에서 출구로 빨려 올라감
-      const k = easeInOut(t / 0.55);
-      x = b.sx + (CX - b.sx) * k; y = b.sy + (EXIT_Y + BR - b.sy) * k;
-    } else {       // 튜브를 타고 올라감
-      const k = easeInOut(Math.min(1, (t - 0.55) / 0.45));
-      x = CX; y = EXIT_Y + BR + (TUBE_TOP + BR + 2 - EXIT_Y - BR) * k; r = BR * (1 + 0.15 * k);
+    const t = Math.min(1, (now - b.t0) / b.dur);
+    let x, y, k;
+    if (t < 0.5) {                       // 드럼 안에서 출구로 빨려 올라감 (곡선 경로)
+      k = easeInOut(t / 0.5);
+      const ex = CX, ey = EXIT_Y + BR + 4, mx = b.sx * 0.3 + CX * 0.7, my = Math.min(b.sy, ey) - 50;
+      x = (1 - k) ** 2 * b.sx + 2 * (1 - k) * k * mx + k * k * ex;
+      y = (1 - k) ** 2 * b.sy + 2 * (1 - k) * k * my + k * k * ey;
+    } else {                             // 튜브를 타고 올라감
+      k = easeInOut((t - 0.5) / 0.5);
+      x = CX; y = EXIT_Y + BR + 4 + (TUBE_TOP + BR + 6 - EXIT_Y - BR - 4) * k;
     }
-    // 강조 링
-    ctx.beginPath(); ctx.arc(x, y, r + 5, 0, Math.PI * 2);
-    ctx.fillStyle = 'rgba(255,215,0,.35)'; ctx.fill();
-    drawBallAt(x, y, b.n, 0, r);
+    const f = Math.min(1, t / 0.5);
+    const ax = b.sax + (toFront(b.sax) - b.sax) * f, ay = b.say + (toFront(b.say) - b.say) * f;
+    const glow = ctx.createRadialGradient(x, y, BR * .6, x, y, BR * 2.4);
+    glow.addColorStop(0, 'rgba(255,214,90,.75)'); glow.addColorStop(1, 'rgba(255,214,90,0)');
+    ctx.fillStyle = glow; ctx.beginPath(); ctx.arc(x, y, BR * 2.4, 0, Math.PI * 2); ctx.fill();
+    drawBall(x, y, b.n, ax, ay, BR * (1 + 0.12 * f));
   }
-  // 하이라이트
-  ctx.beginPath(); ctx.ellipse(CX - 70, CY - 95, 45, 18, -0.6, 0, Math.PI * 2);
-  ctx.fillStyle = dark ? 'rgba(255,255,255,.05)' : 'rgba(255,255,255,.55)'; ctx.fill();
+  drawTube(false);
 }
-const easeInOut = t => t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
 
 let lastT = performance.now();
 function loop(now) {
-  let dt = Math.min(0.033, (now - lastT) / 1000); lastT = now;
-  physics(dt / 2); physics(dt / 2);
+  const dt = Math.min(0.033, (now - lastT) / 1000); lastT = now;
+  physics(dt / 3); physics(dt / 3); physics(dt / 3);
   render(now);
   requestAnimationFrame(loop);
 }
 
 /* ---------- 결과 트레이 ---------- */
 const tray = document.getElementById('tray');
-function emptyTray() {
-  tray.innerHTML = Array(6).fill('<span class="ball sm empty">?</span>').join('') +
-    '<span class="plus">+</span><span class="ball sm empty">?</span>';
-}
-function setTray(d) {
-  tray.innerHTML = d.nums.map(n => ballHTML(n, true)).join('') + '<span class="plus">+</span>' + ballHTML(d.bonus, true);
-}
 const statusEl = document.getElementById('status');
+const setStatus = html => { statusEl.innerHTML = html; };
+function emptyTray() {
+  tray.innerHTML = Array(6).fill('<span class="slot"></span>').join('') +
+    '<span class="plus">+</span><span class="bonus-wrap"><span class="slot bonus"></span><small>보너스</small></span>';
+}
+const traySlots = () => [...tray.querySelectorAll('.slot')];
+function setTray(d) {
+  emptyTray();
+  traySlots().forEach((s, i) => s.innerHTML = ballHTML(i < 6 ? d.nums[i] : d.bonus));
+}
+
+// 튜브 꼭대기에서 결과 칸까지 공이 날아가는 연출
+function flyToSlot(n, slot, dur) {
+  return new Promise(res => {
+    const rc = cv.getBoundingClientRect(), k = rc.width / W;
+    const sx = rc.left + CX * k, sy = rc.top + (TUBE_TOP + BR + 6) * k;
+    const t = slot.getBoundingClientRect(), size = t.width;
+    const el = document.createElement('span');
+    el.className = `ball fly ${colorClass(n)}`; el.textContent = n;
+    el.style.cssText = `position:fixed;left:${sx - size / 2}px;top:${sy - size / 2}px;width:${size}px;height:${size}px;z-index:50;pointer-events:none`;
+    document.body.appendChild(el);
+    const dx = t.left + size / 2 - sx, dy = t.top + size / 2 - sy;
+    const s0 = (BR * 2.3 * k) / size;
+    const lift = Math.min(dy, 0) * 0.5 - 70;
+    const a = el.animate([
+      { transform: `translate(0,0) scale(${s0}) rotate(0deg)` },
+      { transform: `translate(${dx * .45}px,${lift}px) scale(1.45) rotate(160deg)`, offset: .45 },
+      { transform: `translate(${dx}px,${dy}px) scale(1) rotate(360deg)` },
+    ], { duration: dur, easing: 'cubic-bezier(.4,0,.3,1)' });
+    a.onfinish = () => { el.remove(); res(); };
+  });
+}
+
+function confetti() {
+  const r = tray.getBoundingClientRect(), cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+  const cols = ['#fbc400', '#69c8f2', '#ff7272', '#b0d840', '#9775fa', '#fff'];
+  for (let i = 0; i < 70; i++) {
+    const p = document.createElement('i');
+    p.className = 'confetti';
+    p.style.cssText = `left:${cx}px;top:${cy}px;background:${cols[i % cols.length]};`;
+    document.body.appendChild(p);
+    const ang = Math.random() * Math.PI * 2, dist = 80 + Math.random() * 220;
+    p.animate([
+      { transform: 'translate(0,0) rotate(0)', opacity: 1 },
+      { transform: `translate(${Math.cos(ang) * dist}px,${Math.sin(ang) * dist - 120}px) rotate(${Math.random() * 720}deg)`, opacity: 1, offset: .55 },
+      { transform: `translate(${Math.cos(ang) * dist * 1.2}px,${Math.sin(ang) * dist + 140}px) rotate(${Math.random() * 1080}deg)`, opacity: 0 },
+    ], { duration: 1400 + Math.random() * 900, easing: 'cubic-bezier(.2,.6,.4,1)' }).onfinish = () => p.remove();
+  }
+}
+
+function setBusy(b) {
+  drawing = b;
+  document.getElementById('drawBtn').disabled = b;
+  document.querySelectorAll('[data-bulk]').forEach(x => x.disabled = b);
+}
 
 document.getElementById('drawBtn').onclick = async function () {
   if (drawing) return;
-  drawing = true; this.disabled = true;
+  setBusy(true);
   document.getElementById('bulkMsg').textContent = '';
   const sp = +document.getElementById('speed').value;
   const order = drawUnique(7);          // 결과는 미리 공정하게 결정 (중복 없음)
-  resetBalls(); emptyTray();
-  const slots = tray.querySelectorAll('.ball');
-  statusEl.textContent = '🌀 공을 섞는 중...';
+  emptyTray(); drawnCount = 0;
+  const slots = traySlots();
+  if (balls.some(b => b.state !== 'drum')) { setStatus('공을 다시 넣는 중...'); returnBalls(); await sleep(700 * sp); }
+  setStatus('🌀 공기를 불어 넣어 공을 섞는 중...');
   blowerTarget = 1;
-  await sleep(2400 * sp);
+  await sleep(2800 * sp);
   const got = [];
   for (let i = 0; i < 7; i++) {
-    statusEl.textContent = i < 6 ? `${i + 1}번째 번호 추첨 중...` : '보너스 번호 추첨 중...';
+    setStatus(i < 6 ? `<span class="muted">${i + 1}번째 공</span> 추첨 중...` : `<span class="muted">보너스 공</span> 추첨 중...`);
     const b = balls.find(x => x.n === order[i]);
-    Object.assign(b, { state: 'out', sx: b.x, sy: b.y, t0: performance.now(), dur: 1300 * sp });
-    await sleep(1300 * sp);
+    Object.assign(b, { state: 'out', sx: b.x, sy: b.y, sax: b.ax, say: b.ay, t0: performance.now(), dur: 1500 * sp });
+    await sleep(1500 * sp);
     b.state = 'gone';
-    got.push(order[i]);
-    // 본번호는 나온 순서대로 놓고, 6개가 다 나오면 오름차순 정렬
-    slots[i].className = `ball sm ${colorClass(order[i])} pop`;
-    slots[i].textContent = order[i];
-    statusEl.textContent = i < 6 ? `${i + 1}번째 번호: ${order[i]}` : `보너스 번호: ${order[i]}`;
+    await flyToSlot(order[i], slots[i], Math.max(450, 800 * sp));
+    slots[i].innerHTML = ballHTML(order[i], false, 'land');
+    drawnCount = i + 1; got.push(order[i]);
+    setStatus(i < 6 ? `${i + 1}번째 번호 <b>${order[i]}</b>` : `보너스 번호 <b>${order[i]}</b>`);
     if (i === 5) {
       await sleep(500 * sp);
-      const sorted = got.slice(0, 6).sort((a, b) => a - b);
-      sorted.forEach((n, k) => { slots[k].className = `ball sm ${colorClass(n)}`; slots[k].textContent = n; });
+      [...got].sort((a, b) => a - b).forEach((n, k) => slots[k].innerHTML = ballHTML(n, false, 'resort'));
     }
-    await sleep(i === 6 ? 0 : 800 * sp);
+    if (i < 6) await sleep(600 * sp);
   }
   blowerTarget = 0;
   const d = { nums: order.slice(0, 6).sort((a, b) => a - b), bonus: order[6], time: Date.now() };
   addHistory([d]);
-  statusEl.textContent = `🎉 ${history.length}회차 추첨 완료!`;
-  drawing = false; this.disabled = false;
+  setStatus(`🎉 ${history.length}회차 추첨 완료!`);
+  confetti();
+  setBusy(false);
 };
 
 document.querySelectorAll('[data-bulk]').forEach(b => b.onclick = () => {
