@@ -88,6 +88,11 @@
   #bulkMsg, .toast { white-space: pre-line; text-align: center; }
   #bulkMsg { text-align: left; }
   .toast.show { opacity: 1; transform: translate(-50%, 0); }
+  .pager { display: flex; gap: 6px; align-items: center; justify-content: center; flex-wrap: wrap; margin-top: 14px; }
+  .pg { min-width: 34px; height: 34px; padding: 0 8px; border-radius: 9px; border: 1px solid var(--line); background: var(--card); color: var(--text); cursor: pointer; font-size: 14px; }
+  .pg[aria-current="page"] { background: var(--accent); color: #fff; border-color: var(--accent); font-weight: 700; }
+  .pg.off { opacity: .35; cursor: default; }
+  .pg-info { width: 100%; text-align: center; margin-top: 2px; }
   .note { font-size: 12px; color: var(--muted); margin-top: 10px; line-height: 1.6; }
   .chips { display: flex; gap: 6px; flex-wrap: wrap; width: 100%; padding-left: 30px; }
   .chip { font-size: 12px; background: var(--accent-soft); color: var(--text); padding: 3px 8px; border-radius: 999px; }
@@ -161,8 +166,9 @@
       </div>
     </div>
     <div class="card">
-      <h2>최근 5회</h2>
+      <h2>추첨 결과 <span class="muted" id="recentInfo"></span></h2>
       <div id="recent"></div>
+      <div class="pager" id="recentPager"></div>
     </div>
   </section>
 
@@ -812,20 +818,46 @@ document.querySelectorAll('[data-bulk]').forEach(b => b.onclick = () => {
 });
 function addHistory(arr) {
   history.push(...arr);
+  recentPage = 1;
   document.getElementById('cartFromDraw').disabled = false;
   if (history.length > MAX_HISTORY) history = history.slice(-MAX_HISTORY);
   save();
   renderRecent();
 }
+const PAGE_SIZE = 10;
+let recentPage = 1;
 function renderRecent() {
   document.getElementById('roundLabel').textContent = `· 다음 ${history.length + 1}회차`;
-  const el = document.getElementById('recent');
-  if (!history.length) { el.innerHTML = '<p class="muted">아직 기록이 없어요.</p>'; return; }
-  el.innerHTML = history.slice(-5).reverse().map((d, i) => `
-    <div class="set"><span class="muted" style="width:60px">${history.length - i}회</span>
+  const el = document.getElementById('recent'), pager = document.getElementById('recentPager');
+  const total = history.length, pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  recentPage = Math.min(Math.max(1, recentPage), pages);
+  if (!total) {
+    el.innerHTML = '<p class="muted">아직 기록이 없어요.</p>';
+    pager.innerHTML = ''; document.getElementById('recentInfo').textContent = '';
+    return;
+  }
+  // 최신 회차가 1페이지 맨 위
+  const hi = total - (recentPage - 1) * PAGE_SIZE, lo = Math.max(0, hi - PAGE_SIZE);
+  document.getElementById('recentInfo').textContent = `${hi}~${lo + 1}회 · 총 ${total.toLocaleString()}회`;
+  el.innerHTML = history.slice(lo, hi).reverse().map((d, i) => `
+    <div class="set"><span class="muted" style="width:64px">${hi - i}회</span>
       ${d.nums.map(n => ballHTML(n, true)).join('')}<span class="plus" style="font-size:16px">+</span>${ballHTML(d.bonus, true)}
     </div>`).join('');
+  if (pages === 1) { pager.innerHTML = ''; return; }
+  // 현재 페이지 주변 5개 번호만 표시
+  let a = Math.max(1, recentPage - 2), b = Math.min(pages, a + 4); a = Math.max(1, b - 4);
+  const btn = (pg, label, extra = '') => `<button class="pg ${extra}" data-pg="${pg}" ${pg === recentPage && !extra ? 'aria-current="page"' : ''}>${label}</button>`;
+  pager.innerHTML =
+    btn(1, '«', recentPage === 1 ? 'off' : 'nav') + btn(recentPage - 1, '‹', recentPage === 1 ? 'off' : 'nav') +
+    Array.from({ length: b - a + 1 }, (_, k) => btn(a + k, a + k)).join('') +
+    btn(recentPage + 1, '›', recentPage === pages ? 'off' : 'nav') + btn(pages, '»', recentPage === pages ? 'off' : 'nav') +
+    `<span class="muted pg-info">${recentPage} / ${pages.toLocaleString()} 페이지</span>`;
 }
+document.getElementById('recentPager').onclick = e => {
+  const b = e.target.closest('[data-pg]');
+  if (!b || b.classList.contains('off')) return;
+  recentPage = +b.dataset.pg; renderRecent();
+};
 
 /* ---------- 기록 ---------- */
 function renderHistory() {
