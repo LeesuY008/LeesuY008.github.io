@@ -77,6 +77,16 @@ svg{touch-action:none;width:100%;height:auto;display:block}
 .empty{color:var(--sub);padding:10px 0}
 .ck{display:flex;flex-direction:row;align-items:center;gap:6px;min-width:0;flex:none;font-size:14px;color:var(--ink)}
 .photo{overflow:hidden}.photo img{width:100%;height:100%;object-fit:cover}
+.bellb{position:relative;border:0;background:none;font-size:20px;cursor:pointer;padding:4px 8px;border-radius:12px;color:var(--ink)}
+.bc{position:absolute;top:-2px;right:-2px;background:var(--acc);color:#fff;font-size:11px;font-weight:700;min-width:18px;height:18px;line-height:18px;border-radius:9px;text-align:center;padding:0 4px;font-family:inherit}
+.bp{position:absolute;right:16px;top:100%;width:min(380px,calc(100vw - 32px));max-height:70vh;overflow:auto;background:var(--panel);border:1px solid var(--line);border-radius:var(--r);box-shadow:0 10px 30px rgba(0,0,0,.18);padding:10px;z-index:10}
+.al{display:flex;gap:8px;align-items:flex-start;width:100%;text-align:left;border:0;background:none;color:var(--ink);font:inherit;padding:8px;border-radius:10px;cursor:pointer}
+.al:hover{background:var(--bg)}.al.new{background:color-mix(in srgb,var(--acc) 10%,transparent)}
+.nw{color:var(--acc);font-weight:700;font-size:11px}
+.cnt{background:var(--acc);color:#fff;border-radius:999px;font-size:11px;padding:0 6px;margin-left:2px}
+.cert{border:1px solid var(--line);border-radius:var(--r);padding:28px;background:var(--panel);margin-bottom:14px}
+.cert h2{text-align:center;letter-spacing:.3em;margin-bottom:4px}
+@media print{body *{visibility:hidden}.cert,.cert *{visibility:visible}.cert{position:absolute;left:0;top:0;width:100%;border:0}.nonprint{display:none!important}}
 .steps{display:flex;gap:8px;flex-wrap:wrap}
 .step{flex:1;min-width:110px;border:1px solid var(--line);border-radius:12px;padding:10px;text-align:center;color:var(--sub);font-size:13px}
 .step i{display:block;font-style:normal;width:26px;height:26px;line-height:26px;margin:0 auto 4px;border-radius:50%;background:var(--line);color:var(--ink);font-weight:600}
@@ -92,6 +102,8 @@ svg{touch-action:none;width:100%;height:auto;display:block}
   <input id="q" type="search" placeholder="부서·직원 검색" aria-label="부서 또는 직원 검색">
   <select id="who" aria-label="보기 계정"></select>
   <nav id="nav" aria-label="주 메뉴"></nav>
+  <button id="bell" class="bellb" aria-label="알림">🔔<span id="bc" class="bc" hidden></span></button>
+  <div id="bp" class="bp" hidden></div>
 </header>
 <main id="main"></main>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
@@ -101,13 +113,15 @@ const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&g
 const LS=k=>{try{return JSON.parse(localStorage.getItem(k))}catch(e){return null}};
 const SV=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
 const won=n=>n.toLocaleString("ko-KR")+"원";
-const today=()=>new Date().toISOString().slice(0,10);
+const fmt=d=>d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+const today=()=>fmt(new Date()),nowS=()=>today()+" "+new Date().toTimeString().slice(0,5),uid=()=>Math.random().toString(36).slice(2,10);
 const n0=v=>+v||0;
 
 /* ===== 기본(샘플) 데이터 ===== */
 const G={mgmt:"경영지원본부",biz:"사업본부",tech:"기술본부",ind:"독립 부서"};
 const ST=["재직중","휴가중","휴직","퇴사"],STC={재직중:"ok",휴가중:"vac",휴직:"off",퇴사:"off"};
-const MV=["결재 대기","승인","반려"],MVC={"결재 대기":"pend","승인":"ok","반려":"bad"};
+const MV=["결재 대기","승인","반려"],MVC={"결재 대기":"pend","승인":"ok","반려":"bad","발급 완료":"ok"};
+const CS=["결재 대기","발급 완료","반려"],LT=["연차","반차(오전)","반차(오후)","병가","경조휴가","기타"],OTT=["연장","야간","휴일"],CT=["재직증명서","경력증명서"],WORKIN="09:00",RK=["move","edu","leave","ot","cert"];
 const BS=["접수 대기","처리중","완료"],BSC={"접수 대기":"pend","처리중":"vac","완료":"ok"};
 const STG=["신청 접수","자료 검토","보완 요청","정산 완료"],EDU=["직무","법정","리더십","어학","기타"];
 function DEF(){
@@ -119,12 +133,20 @@ function DEF(){
  Object.assign(me,{id:"2024-0137",tel:"010-0000-0000",mail:"sample@example.com",addr:"서울특별시 ○○구 ○○로 00 (샘플 주소)",awards:"2025:우수사원상;2024:올해의 협업상"});
  const edge=[["hr","ga",3],["hr","fin",2],["ga","fin",2],["hr","plan",1],["sales","mkt",3],["plan","sales",2],["fin","sales",1],["plan","dev",3],["dev","prod",3],["mkt","plan",1]].map(([a,b,w])=>({a,b,w}));
  const pay=Array.from({length:10},(_,i)=>({emp:me.id,ym:"2026-"+String(i+1).padStart(2,"0"),base:3200000,meal:200000,bonus:[3,6].includes(i+1)?500000:0,pension:144000,health:113400,care:14700,employ:28800,tax:98000,ltax:9800}));
+  const T=new Date(),back=o=>new Date(T.getFullYear(),T.getMonth(),T.getDate()-o),wk=d=>{while(d.getDay()%6==0)d.setDate(d.getDate()-1);return d};
+ const att=[];
+ for(let o=45;o>=1;o--){const d=back(o);if(d.getDay()%6==0)continue;const k=d.getDate();att.push({emp:me.id,date:fmt(d),in:k%9==0?"09:12":"08:"+(50+k%9),out:"18:"+String(k%25).padStart(2,"0")})}
+ const ld=fmt(wk(back(20))),od=fmt(wk(back(10)));
+ const leave=[{id:uid(),emp:me.id,date:ld,type:"연차",from:ld,to:ld,days:1,why:"개인 사유 (샘플)",status:"승인",dec:ld+" 09:00"}];
+ const ot=[{id:uid(),emp:me.id,date:od,wdate:od,type:"연장",from:"18:00",to:"20:00",hours:2,why:"월말 마감 업무 (샘플)",status:"승인",dec:od+" 10:00"}];
+ const grant=[{emp:me.id,year:String(T.getFullYear()),days:15}],cert=[];
+ const notice=[{id:uid(),title:"[필독] HR 통합 시스템 이용 안내",body:"인사정보, 근태, 휴가·초과근무 신청, 증명서 신청, 연말정산을 한 곳에서 이용할 수 있습니다. 신청 결과는 우측 상단 알림(종 모양)으로 알려 드립니다. (샘플 공지)",date:fmt(T),pin:"Y"},{id:uid(),title:"연차 사용 계획 제출 안내 (샘플)",body:"연말 연차 소진을 위해 사용 계획을 팀장에게 공유해 주세요. 휴가는 근무·증명 메뉴의 휴가 신청에서 신청합니다. (샘플 공지)",date:fmt(back(3)),pin:""}];
  return{dept,emp,edge,pay,
   hist:[{emp:me.id,date:"2022-03-01",type:"입사",from:"-",to:"인사팀"},{emp:me.id,date:"2024-01-01",type:"부서이동",from:"인사팀",to:"총무팀"}],
   crit:[["업무 성과","목표 달성도, 결과물의 품질",40],["직무 역량","전문 지식, 문제 해결",30],["협업·소통","부서 간 협력, 정보 공유",20],["근무 태도","책임감, 근태",10]].map(([name,desc,weight])=>({name,desc,weight})),
   res:[{emp:me.id,period:"2025 상반기",s1:82,s2:78,s3:88,s4:95},{emp:me.id,period:"2025 하반기",s1:88,s2:84,s3:90,s4:95}],
   appt:[{emp:me.id,date:"2024-01-01",type:"부서이동",content:"인사팀 → 총무팀"},{emp:me.id,date:"2025-01-01",type:"승진",content:"사원 → 대리"}],
-  move:[],board:[],manual:[],edu:[],
+  move:[],board:[],manual:[],edu:[],leave,grant,att,ot,cert,notice,
   ye:[{emp:me.id,year:"2025",date:"2026-01-15",dep:0,items:"보험료, 의료비",memo:"",fs:[],stage:"정산 완료",note:"정산이 완료되었습니다. (샘플)"}],
   yer:[{emp:me.id,year:"2025",total:42000000,tax:1800000,paid:2000000,note:"샘플 데이터입니다."}]};
 }
@@ -136,17 +158,18 @@ const dn=id=>{const d=DB.dept.find(x=>x.id==id);return d?d.name:id};
 const me=()=>DB.emp.find(e=>e.id==curId)||DB.emp[0]||null;
 function derive(){D=DB.dept.map(d=>[d.id,d.name,d.group,DB.emp.filter(e=>e.dept==d.id).map(e=>[e.name,e.rank])]);E=DB.edge.map(e=>[e.a,e.b,n0(e.w)||1]);ISO=D.filter(d=>!rel(d[0]).length).map(d=>d[0])}
 const save=()=>{SV("hr_db",DB);derive()};
-derive();
+[...RK,"notice"].forEach(n=>DB[n].forEach(r=>{if(!r.id)r.id=uid()}));
+derive();save();
 const DEDS=[["국민연금","pension"],["건강보험","health"],["장기요양보험","care"],["고용보험","employ"],["소득세","tax"],["지방소득세","ltax"]];
 const grade=s=>s>=90?"S":s>=80?"A":s>=70?"B":"C";
 const awards=m=>(m.awards||"").split(";").map(s=>s.trim()).filter(Boolean).map(s=>{const i=s.indexOf(":");return i<0?["",s]:[s.slice(0,i),s.slice(i+1)]});
 
 /* ===== 상태·공통 ===== */
-const TABS=[["info","인사정보"],["dept","부서별 업무·연관"],["eval","인사평가·발령"],["ye","연말정산"],["board","건의·문의"],["admin","관리자"]];
-const SUBS={info:[["me","개인정보"],["pay","급여"],["hist","부서이동 이력"],["move","부서이동 신청"],["edu","교육 신청"]],dept:[["net","연관도"],["man","업무 매뉴얼"]],eval:[["crit","평가 항목"],["res","내 평가 결과"],["appt","인사발령 결과"]],ye:[["apply","연말정산 신청"],["prog","연말정산 진행"],["res","연말정산 결과"]],board:[["건의사항","건의사항"],["문의사항","문의사항"],["칭찬합니다","칭찬합니다"]],
- admin:[["dash","현황"],["emp","직원"],["dept","부서"],["edge","연관도"],["pay","급여"],["hist","이동 이력"],["crit","평가 항목"],["res","평가 결과"],["appt","발령"],["move","이동 신청 결재"],["board","건의·문의 답변"],["edu","교육 신청 결재"],["ye","연말정산 진행"],["yer","연말정산 결과"],["manual","매뉴얼"]]};
-let tab="info",sub={info:"me",dept:"net",eval:"crit",ye:"apply",board:"건의사항",admin:"dash"},selM=null,selD=null,editing=null,sim=null,POSMEM={},armed="",pY="",pM="01";
-const subbar=()=>'<div class="sub">'+SUBS[tab].map(s=>'<button data-s="'+s[0]+'" class="'+(sub[tab]==s[0]?"on":"")+'">'+s[1]+'</button>').join("")+'</div>';
+const TABS=[["info","인사정보"],["dept","부서별 업무·연관"],["eval","인사평가·발령"],["work","근무·증명"],["ye","연말정산"],["board","건의·문의"],["appr","결재함"],["notice","공지사항"],["admin","관리자"]];
+const SUBS={info:[["me","개인정보"],["pay","급여"],["att","근태현황"],["hist","부서이동 이력"],["move","부서이동 신청"],["edu","교육 신청"]],dept:[["net","연관도"],["man","업무 매뉴얼"]],eval:[["crit","평가 항목"],["res","내 평가 결과"],["appt","인사발령 결과"]],work:[["leave","휴가 신청"],["ot","초과근무 신청"],["cert","증명서 신청"],["issue","증명서 발급"]],appr:[["all","전체"],["pend","결재 대기"],["done","승인·발급"],["rej","반려"]],notice:[["list","공지 목록"]],ye:[["apply","연말정산 신청"],["prog","연말정산 진행"],["res","연말정산 결과"]],board:[["건의사항","건의사항"],["문의사항","문의사항"],["칭찬합니다","칭찬합니다"]],
+ admin:[["dash","현황"],["emp","직원"],["dept","부서"],["edge","연관도"],["pay","급여"],["hist","이동 이력"],["crit","평가 항목"],["res","평가 결과"],["appt","발령"],["move","이동 신청 결재"],["board","건의·문의 답변"],["edu","교육 신청 결재"],["ye","연말정산 진행"],["yer","연말정산 결과"],["leave","휴가 결재"],["grant","연차 부여"],["att","근태 기록"],["ot","초과근무 결재"],["cert","증명서 결재"],["notice","공지사항"],["manual","매뉴얼"]]};
+let tab="info",sub={info:"me",dept:"net",eval:"crit",ye:"apply",work:"leave",appr:"all",notice:"list",board:"건의사항",admin:"dash"},selM=null,selD=null,editing=null,sim=null,POSMEM={},armed="",pY="",pM="01",attY="",attMo="",selCert=null,selN=null;
+const subbar=()=>SUBS[tab].length<2?"":'<div class="sub">'+SUBS[tab].map(s=>'<button data-s="'+s[0]+'" class="'+(sub[tab]==s[0]?"on":"")+'">'+s[1]+'</button>').join("")+'</div>';
 const tbl=(h,rows)=>'<div class="tw"><table><tr>'+h.map(x=>'<th>'+x+'</th>').join("")+'</tr>'+rows.map(r=>'<tr>'+r.map(c=>'<td>'+c+'</td>').join("")+'</tr>').join("")+'</table></div>';
 const opts=(list,v)=>list.map(o=>'<option value="'+esc(o[0])+'"'+(o[0]==v?" selected":"")+'>'+esc(o[1])+'</option>').join("");
 const none='<div class="empty">등록된 내용이 없습니다.</div>';
@@ -195,6 +218,71 @@ function vYr(){
  if(!d.length)return '<div class="box"><div class="empty">등록된 연말정산 결과가 없습니다. 정산이 완료되면 인사팀이 결과를 등록합니다.</div></div>';
  return d.map(r=>{const df=n0(r.tax)-n0(r.paid),lab=df>0?"추가 납부":df<0?"환급":"차액 없음";
   return '<div class="box"><div class="ch"><h3>'+esc(r.year)+'년 귀속 연말정산 결과</h3><span class="st '+(df<0?"ok":df>0?"pend":"off")+'">'+lab+'</span></div>'+tbl(["항목","금액"],[line("총급여",r.total),line("결정세액",r.tax),line("기납부세액",r.paid),['<b>차감징수세액 (결정세액 - 기납부세액)</b>','<div class="num tot">'+won(df)+'</div>']])+'<div class="tot" style="font-size:22px;margin-top:12px;color:'+(df<0?"var(--ok)":df>0?"var(--acc)":"var(--sub)")+'">'+lab+' '+won(Math.abs(df))+'</div>'+(r.note?'<p class="note" style="margin:8px 0 0">'+esc(r.note)+'</p>':'')+'</div>'}).join("")+'<p class="note">차감징수세액이 음수이면 환급, 양수이면 추가 납부입니다. 세액은 인사팀이 입력한 값이며 이 시스템이 계산하지 않습니다.</p>'}
+
+/* ===== 근태 · 휴가 · 초과근무 · 증명서 · 결재함 · 공지 ===== */
+const WD=["일","월","화","수","목","금","토"];
+const pd=s=>{const[a,b,c]=s.split("-").map(Number);return new Date(a,b-1,c)};
+const wdays=(f,t)=>{let n=0,d=pd(f),e=pd(t),g=0;while(d<=e&&g++<400){if(d.getDay()%6)n++;d.setDate(d.getDate()+1)}return n};
+const isLD=t=>t=="연차"||t.startsWith("반차");
+const hm=s=>{const[a,b]=(s||"0:0").split(":").map(Number);return a*60+b};
+const hrs=(f,t)=>{let m=hm(t)-hm(f);if(m<0)m+=1440;return Math.round(m/6)/10};
+const mon=s=>{const d=pd(s);d.setDate(d.getDate()-((d.getDay()+6)%7));return fmt(d)};
+const stc=s=>'<span class="st '+(MVC[s]||"pend")+'">'+esc(s)+'</span>';
+const stat=(a,b)=>'<div class="box stat"><span class="note">'+a+'</span><b>'+b+'</b></div>';
+const unreadN=()=>{const rd=LS("hr_nread")||[];return DB.notice.filter(n=>!rd.includes(n.id)).length};
+const RQ=[["move","부서이동",r=>"희망 부서 "+r.to+" ("+r.dt+")"],["edu","교육",r=>r.name+" ("+r.from+" ~ "+r.to+")"],["leave","휴가",r=>r.type+" "+r.from+(r.to!=r.from?" ~ "+r.to:"")+" ("+r.days+"일)"],["ot","초과근무",r=>r.wdate+" "+r.type+" "+r.from+"~"+r.to+" ("+r.hours+"시간)"],["cert","증명서",r=>r.type+" "+n0(r.copies)+"부 ("+r.purpose+")"]];
+const allReqs=emp=>RQ.flatMap(([k,l,f])=>DB[k].filter(r=>r.emp==emp).map(r=>({id:r.id,label:l,sum:f(r),date:r.date||"",st:r.status,dec:r.dec||""})));
+function alerts(){return allReqs(curId).filter(r=>r.st!="결재 대기").sort((a,b)=>a.dec<b.dec?1:-1).slice(0,15)}
+function bell(){
+ const b=$("#bell"),p=$("#bp");b.hidden=ADMIN;if(ADMIN){p.hidden=true;return}
+ const a=alerts(),seen=LS("hr_seen")||{},nw=a.filter(x=>seen[x.id]!=x.st).length;
+ $("#bc").textContent=nw;$("#bc").hidden=!nw;
+ p.innerHTML='<div class="ch"><h3>알림</h3><button class="btn sm" data-readall="1">모두 읽음</button></div>'+(a.length?a.map(x=>{const n=seen[x.id]!=x.st;return '<button class="al'+(n?" new":"")+'" data-al="'+esc(x.id)+'"><span class="st '+(MVC[x.st]||"pend")+'">'+esc(x.st)+'</span><span style="flex:1">'+esc(x.label)+" 신청이 "+(x.st=="발급 완료"?"발급 완료되었습니다":esc(x.st)+"되었습니다")+'<br><span class="note">'+esc(x.sum)+" · "+esc(x.dec)+'</span></span>'+(n?'<span class="nw">NEW</span>':"")+'</button>'}).join(""):'<div class="empty">새 알림이 없습니다.</div>')}
+function leaveMap(emp){const m={};DB.leave.filter(r=>r.emp==emp&&r.status!="반려").forEach(r=>{let d=pd(r.from),e=pd(r.to),g=0;while(d<=e&&g++<400){if(d.getDay()%6)m[fmt(d)]={type:r.type,st:r.status};d.setDate(d.getDate()+1)}});return m}
+const lstat=(emp,y)=>{const gs=DB.grant.filter(x=>x.emp==emp&&String(x.year)==String(y)),rs=DB.leave.filter(r=>r.emp==emp&&isLD(r.type)&&String(r.from).slice(0,4)==String(y)),sm=s=>rs.filter(r=>r.status==s).reduce((a,r)=>a+n0(r.days),0);return{g:gs.reduce((a,x)=>a+n0(x.days),0),has:gs.length>0,used:sm("승인"),pend:sm("결재 대기")}};
+const lvDays=f=>{const g=n=>f.elements[n].value,type=g("type"),from=g("from"),to=type.startsWith("반차")?from:g("to");if(!from||!to||to<from)return 0;return type.startsWith("반차")?(pd(from).getDay()%6?.5:0):wdays(from,to)};
+function otInfo(f){const g=n=>f.elements[n].value,date=g("date"),type=g("type"),h=g("from")&&g("to")?hrs(g("from"),g("to")):0;let wk=0;if(date&&type=="연장"){const m=mon(date);wk=DB.ot.filter(r=>r.emp==curId&&r.type=="연장"&&r.status!="반려"&&r.wdate&&mon(r.wdate)==m).reduce((a,r)=>a+n0(r.hours),0)}return{h,wk,date,type}}
+const noEmp='<div class="empty">등록된 내용이 없습니다.</div>';
+function vAtt(){
+ const T=new Date(),y=attY||String(T.getFullYear()),mo=attMo||String(T.getMonth()+1).padStart(2,"0");
+ const ys=[...new Set(DB.att.filter(r=>r.emp==curId).map(r=>r.date.slice(0,4)).concat(String(T.getFullYear())))].sort().reverse();
+ const last=new Date(+y,+mo,0).getDate(),lm=leaveMap(curId),ts=today(),att={},ot={};
+ DB.att.filter(r=>r.emp==curId).forEach(r=>att[r.date]=r);
+ DB.ot.filter(r=>r.emp==curId&&r.status=="승인").forEach(r=>ot[r.wdate]=(ot[r.wdate]||0)+n0(r.hours));
+ let work=0,late=0,lv=0,oth=0;const rows=[];
+ for(let d=1;d<=last;d++){const ds=y+"-"+mo+"-"+String(d).padStart(2,"0"),wd=pd(ds).getDay(),a=att[ds],l=lm[ds];let tag,note="";
+  if(l){tag='<span class="st '+(l.st=="승인"?"vac":"pend")+'">'+(l.st=="승인"?"휴가":"휴가 신청 중")+" ("+esc(l.type)+')</span>';if(l.st=="승인")lv+=l.type.startsWith("반차")?.5:1}
+  else if(a){work++;const lt=a.in>WORKIN;if(lt)late++;tag='<span class="st '+(lt?"pend":"ok")+'">'+(lt?"지각":"정상")+"</span>"}
+  else if(wd%6==0)tag='<span class="st off">휴일</span>';
+  else if(ds>ts)tag="-";
+  else tag='<span class="st bad">기록 없음</span>';
+  if(ot[ds]){oth+=ot[ds];note="초과근무 "+ot[ds]+"시간"}
+  rows.push([ds.slice(5)+" ("+WD[wd]+")",tag,a?esc(a.in):"-",a?esc(a.out):"-",a?hrs(a.in,a.out)+"시간":"-",note])}
+ return '<div class="box"><div class="row" style="align-items:flex-end;margin:0"><label>연도<select id="ay">'+opts(ys.map(x=>[x,x+"년"]),y)+'</select></label><label>월<select id="amo">'+opts(Array.from({length:12},(_,i)=>[String(i+1).padStart(2,"0"),(i+1)+"월"]),mo)+'</select></label></div></div><div class="stats">'+[["출근 일수",work+"일"],["휴가 일수",lv+"일"],["지각",late+"회"],["초과근무(승인)",Math.round(oth*10)/10+"시간"]].map(x=>stat(x[0],x[1])).join("")+'</div><div class="box">'+tbl(["일자","구분","출근","퇴근","근무시간","비고"],rows)+'</div><p class="note">승인된 휴가와 초과근무는 신청 내역이 자동으로 반영됩니다. 공휴일은 반영하지 않고 토·일만 휴일로 표시하며, 기준 출근시각은 09:00입니다(샘플).</p>'}
+function vLeave(){
+ const Y=String(new Date().getFullYear()),s=lstat(curId,Y),rem=s.g-s.used,d=DB.leave.filter(x=>x.emp==curId);
+ return '<div class="stats">'+[[Y+"년 부여",s.has?s.g+"일":"미등록"],["사용 (승인)",s.used+"일"],["결재 대기",s.pend+"일"],["잔여",s.has?rem+"일":"-"]].map(x=>stat(x[0],x[1])).join("")+'</div><div class="box"><h3>휴가 신청</h3><form id="lf"><div class="row"><label>유형<select name="type">'+opts(LT.map(x=>[x,x]),"연차")+'</select></label><label>시작일<input type="date" name="from" required></label><label>종료일<input type="date" name="to" required></label><label>일수<input name="days" value="-" disabled></label></div><label>사유<textarea name="why" required></textarea></label><p><button class="btn cta">신청하기</button></p></form></div><div class="box"><h3>신청 내역</h3>'+(d.length?tbl(["신청일","유형","기간","일수","사유","상태"],d.map(r=>[esc(r.date),esc(r.type),esc(r.from)+(r.to!=r.from?" ~ "+esc(r.to):""),n0(r.days)+"일",esc(r.why),stc(r.status)])):'<div class="empty">신청 내역이 없습니다.</div>')+'</div><p class="note">잔여 연차는 부여 일수에서 승인된 연차·반차를 뺀 값이며, 결재 대기 중인 일수까지 고려해 신청할 수 있습니다. 병가·경조휴가·기타는 연차에서 차감하지 않습니다(회사 규정에 따름). 법정 연차 일수는 근로기준법 제60조에 따르며 관리자가 부여 일수를 입력합니다. 공휴일은 반영하지 않고 토·일만 제외해 일수를 셉니다.</p>'}
+function vOt(){
+ const d=DB.ot.filter(x=>x.emp==curId);
+ return '<div class="box"><h3>초과근무 신청</h3><form id="of"><div class="row"><label>근무일<input type="date" name="date" required></label><label>유형<select name="type">'+opts(OTT.map(x=>[x,x]),"연장")+'</select></label><label>시작<input type="time" name="from" required></label><label>종료<input type="time" name="to" required></label><label>시간<input name="hours" value="-" disabled></label></div><p class="note" id="otp" style="margin:0 0 8px"></p><label>사유<textarea name="why" required></textarea></label><p><button class="btn cta">신청하기</button></p></form></div><div class="box"><h3>신청 내역</h3>'+(d.length?tbl(["신청일","근무일","유형","시간","사유","상태"],d.map(r=>[esc(r.date),esc(r.wdate),esc(r.type),esc(r.from)+" ~ "+esc(r.to)+" ("+n0(r.hours)+"시간)",esc(r.why),stc(r.status)])):'<div class="empty">신청 내역이 없습니다.</div>')+'</div><p class="note">연장근로는 당사자 합의가 있어도 1주 12시간을 한도로 합니다(근로기준법 제53조 제1항, 상시 5인 이상 사업장 기준). 이 화면은 연장 유형의 주간 누적만 점검하며 야간·휴일근로 한도와 가산임금은 계산하지 않습니다.</p>'}
+function vCert(){
+ const d=DB.cert.filter(x=>x.emp==curId);
+ return '<div class="box"><h3>증명서 신청</h3><form id="cf"><div class="row"><label>종류<select name="type">'+opts(CT.map(x=>[x,x]),"")+'</select></label><label>용도·제출처<input name="purpose" required></label><label>부수<input type="number" name="copies" min="1" max="5" value="1" required></label></div><button class="btn cta">신청하기</button></form></div><div class="box"><h3>신청 내역</h3>'+(d.length?tbl(["신청일","종류","용도·제출처","부수","상태"],d.map(r=>[esc(r.date),esc(r.type),esc(r.purpose),n0(r.copies),stc(r.status)])):'<div class="empty">신청 내역이 없습니다.</div>')+'</div><p class="note">신청하면 관리자가 확인한 뒤 발급 처리합니다. 발급되면 "증명서 발급" 메뉴에서 열고 인쇄할 수 있으며 알림으로도 알려 드립니다.</p>'}
+function certDoc(c){
+ const m=DB.emp.find(e=>e.id==c.emp)||me(),hs=DB.hist.filter(x=>x.emp==c.emp).sort((a,b)=>a.date<b.date?-1:1),j=hs.find(x=>x.type=="입사"),dt=(c.dec||c.date).slice(0,10);
+ const body=c.type=="경력증명서"?'<p>위 사람은 아래와 같이 근무하였음을 증명합니다.</p>'+(hs.length?tbl(["일자","구분","이전 부서","이후 부서"],hs.map(x=>[esc(x.date),esc(x.type),esc(x.from),esc(x.to)])):""):'<p>위 사람은 현재 아래 부서에 재직하고 있음을 증명합니다.</p>';
+ return '<div class="cert" id="cert"><h2>'+esc(c.type)+'</h2><p class="note" style="text-align:center;margin-top:0">(샘플 문서 · 법적 효력 없음)</p><dl><dt>성명</dt><dd>'+esc(m.name)+'</dd><dt>사번</dt><dd>'+esc(m.id)+'</dd><dt>소속</dt><dd>'+esc(dn(m.dept))+" / "+esc(m.rank)+'</dd><dt>입사일</dt><dd>'+esc(j?j.date:"-")+'</dd><dt>용도</dt><dd>'+esc(c.purpose)+'</dd><dt>발급 부수</dt><dd>'+n0(c.copies)+'부</dd></dl><div style="margin:16px 0">'+body+'</div><p style="text-align:center;margin:20px 0 4px">'+esc(dt)+'</p><p style="text-align:center;margin:0"><b>OO 주식회사 (샘플)</b></p><p class="nonprint" style="text-align:center;margin:16px 0 0"><button class="btn" data-pr="1">인쇄</button></p></div>'}
+function vIssue(){
+ const d=DB.cert.filter(x=>x.emp==curId&&x.status=="발급 완료");
+ let h='<div class="box"><h3>발급된 증명서</h3>'+(d.length?tbl(["발급일","종류","용도·제출처","부수",""],d.map(r=>[esc((r.dec||r.date).slice(0,10)),esc(r.type),esc(r.purpose),n0(r.copies),'<button class="btn sm" data-cert="'+esc(r.id)+'">열기</button>'])):'<div class="empty">발급 완료된 증명서가 없습니다. "증명서 신청"에서 신청하면 관리자가 발급 처리합니다.</div>')+'</div>';
+ const c=d.find(r=>r.id==selCert);if(c)h+=certDoc(c);return h}
+function vAppr(){
+ const f=sub.appr,all=allReqs(curId).sort((a,b)=>a.date<b.date?1:-1),pend=r=>r.st=="결재 대기",done=r=>r.st=="승인"||r.st=="발급 완료";
+ const rows=all.filter(r=>f=="all"||(f=="pend"&&pend(r))||(f=="done"&&done(r))||(f=="rej"&&r.st=="반려"));
+ return '<div class="stats">'+[["결재 대기",all.filter(pend).length+"건"],["승인·발급",all.filter(done).length+"건"],["반려",all.filter(r=>r.st=="반려").length+"건"]].map(x=>stat(x[0],x[1])).join("")+'</div><div class="box">'+(rows.length?tbl(["구분","내용","신청일","상태","처리일시"],rows.map(r=>[esc(r.label),esc(r.sum),esc(r.date),stc(r.st),esc(r.dec||"-")])):'<div class="empty">해당하는 결재 내역이 없습니다.</div>')+'</div><p class="note">부서이동, 교육, 휴가, 초과근무, 증명서 신청을 한곳에 모았습니다. 신청은 각 메뉴에서 하고, 처리 결과는 여기와 우측 상단 알림(종 모양)에서 확인합니다.</p>'}
+function vNotice(){
+ const rd=LS("hr_nread")||[],L=[...DB.notice].sort((a,b)=>(b.pin=="Y")-(a.pin=="Y")||(a.date<b.date?1:-1));
+ return L.length?L.map(n=>{const nw=!rd.includes(n.id),op=selN==n.id;return '<div class="box"><button class="al" style="padding:0" data-nt="'+esc(n.id)+'"><span style="flex:1"><b>'+(n.pin=="Y"?"📌 ":"")+esc(n.title)+"</b> "+(nw?'<span class="nw">NEW</span>':"")+'<br><span class="note">'+esc(n.date)+'</span></span><span class="note">'+(op?"접기":"펼치기")+'</span></button>'+(op?'<p style="white-space:pre-wrap;margin:12px 0 0">'+esc(n.body)+"</p>":"")+"</div>"}).join(""):'<div class="box">'+noEmp+'</div>'}
 
 /* ===== 부서 연관도 ===== */
 const SW=["","약함","보통","강함"];
@@ -271,34 +359,41 @@ const SC={
  manual:{t:"업무 매뉴얼",n:"등록된 매뉴얼 목록을 수정하거나 삭제합니다.",cols:[C("dp","부서","dept"),C("pr","담당"),C("f","파일명"),C("d","등록일","date")]},
  edu:{t:"교육 신청 결재",n:"상태를 승인 또는 반려로 바꾸면 직원 화면의 교육 신청 내역에 반영됩니다.",cols:[C("emp","신청자","emp"),C("date","신청일","date"),C("name","교육과정명"),C("type","구분"),C("org","교육기관"),C("from","시작일","date"),C("to","종료일","date"),C("cost","교육비","num"),C("why","사유"),C("status","상태","mv")]},
  ye:{t:"연말정산 신청·진행",n:"진행 단계를 바꾸고 인사팀 안내를 쓰면 직원 화면의 연말정산 진행에 표시됩니다.",cols:[C("emp","직원","emp"),C("year","귀속연도"),C("date","신청일","date"),C("dep","부양가족","num"),C("items","제출 항목"),C("memo","메모"),C("stage","진행 단계","ys"),C("note","인사팀 안내")]},
- yer:{t:"연말정산 결과",n:"결정세액과 기납부세액을 입력하면 차감징수세액(결정세액 - 기납부세액)이 직원 화면에 계산되어 표시됩니다. 세액 자체는 이 시스템이 계산하지 않으므로 정산 결과 값을 직접 입력합니다.",cols:[C("emp","직원","emp"),C("year","귀속연도"),C("total","총급여","num"),C("tax","결정세액","num"),C("paid","기납부세액","num"),C("note","비고")]}};
-const BL={dept:()=>DB.dept[0]?DB.dept[0].id:"",emp:()=>DB.emp[0]?DB.emp[0].id:"",st:()=>"재직중",grp:()=>"mgmt",mv:()=>"결재 대기",bs:()=>"접수 대기",ys:()=>"신청 접수",date:today};
+ yer:{t:"연말정산 결과",n:"결정세액과 기납부세액을 입력하면 차감징수세액(결정세액 - 기납부세액)이 직원 화면에 계산되어 표시됩니다. 세액 자체는 이 시스템이 계산하지 않으므로 정산 결과 값을 직접 입력합니다.",cols:[C("emp","직원","emp"),C("year","귀속연도"),C("total","총급여","num"),C("tax","결정세액","num"),C("paid","기납부세액","num"),C("note","비고")]},
+ leave:{t:"휴가 신청 결재",n:"상태를 승인 또는 반려로 바꾸면 직원 화면의 휴가 신청 내역, 근태현황, 잔여 연차, 알림에 반영됩니다. 연차와 반차만 잔여 연차에서 차감됩니다.",cols:[C("emp","신청자","emp"),C("date","신청일","date"),C("type","유형","lt"),C("from","시작일","date"),C("to","종료일","date"),C("days","일수","num"),C("why","사유"),C("status","상태","mv"),C("dec","처리일시")]},
+ grant:{t:"연차 부여",n:"직원별·연도별 부여 일수를 입력합니다. 법정 연차 발생 일수는 근로기준법 제60조 기준이며 입사일과 출근율 등에 따라 달라지므로, 이 시스템은 자동 계산하지 않고 입력한 값을 사용합니다.",cols:[C("emp","직원","emp"),C("year","연도"),C("days","부여 일수","num")]},
+ att:{t:"근태 기록",n:"출근·퇴근 시각을 입력합니다. 기준 출근시각(09:00)보다 늦은 출근은 지각으로 집계됩니다. 승인된 휴가는 근태현황에 자동으로 표시됩니다.",cols:[C("emp","직원","emp"),C("date","일자","date"),C("in","출근","time"),C("out","퇴근","time")]},
+ ot:{t:"초과근무 결재",n:"상태를 승인 또는 반려로 바꾸면 직원 화면, 근태현황, 알림에 반영됩니다.",cols:[C("emp","신청자","emp"),C("date","신청일","date"),C("wdate","근무일","date"),C("type","유형","ott"),C("from","시작","time"),C("to","종료","time"),C("hours","시간","num"),C("why","사유"),C("status","상태","mv"),C("dec","처리일시")]},
+ cert:{t:"증명서 결재",n:"상태를 발급 완료로 바꾸면 직원 화면의 증명서 발급 목록에서 문서를 열 수 있습니다. 반려하면 알림으로 전달됩니다.",cols:[C("emp","신청자","emp"),C("date","신청일","date"),C("type","종류","ct"),C("purpose","용도·제출처"),C("copies","부수","num"),C("status","상태","cs"),C("dec","처리일시")]},
+ notice:{t:"공지사항",n:"공지사항은 이 화면에서만 등록·수정·삭제할 수 있습니다. 구분을 고정으로 두면 목록 맨 위에 표시됩니다.",cols:[C("title","제목"),C("body","내용","area"),C("date","게시일","date"),C("pin","구분","pin")]}};
+const BL={dept:()=>DB.dept[0]?DB.dept[0].id:"",emp:()=>DB.emp[0]?DB.emp[0].id:"",st:()=>"재직중",grp:()=>"mgmt",mv:()=>"결재 대기",bs:()=>"접수 대기",ys:()=>"신청 접수",pin:()=>"",cs:()=>"결재 대기",lt:()=>"연차",ott:()=>"연장",ct:()=>"재직증명서",date:today};
 const blank=s=>Object.fromEntries(SC[s].cols.map(x=>[x[0],BL[x[2]]?BL[x[2]]():x[2]=="num"?0:""]));
-const LST={dept:()=>D.map(d=>[d[0],d[1]]),emp:()=>DB.emp.map(e=>[e.id,e.name+" "+e.id]),st:()=>ST.map(x=>[x,x]),grp:()=>Object.entries(G),mv:()=>MV.map(x=>[x,x]),bs:()=>BS.map(x=>[x,x]),ys:()=>STG.map(x=>[x,x])};
+const LST={dept:()=>D.map(d=>[d[0],d[1]]),emp:()=>DB.emp.map(e=>[e.id,e.name+" "+e.id]),st:()=>ST.map(x=>[x,x]),grp:()=>Object.entries(G),mv:()=>MV.map(x=>[x,x]),bs:()=>BS.map(x=>[x,x]),ys:()=>STG.map(x=>[x,x]),pin:()=>[["","일반"],["Y","고정"]],cs:()=>CS.map(x=>[x,x]),lt:()=>LT.map(x=>[x,x]),ott:()=>OTT.map(x=>[x,x]),ct:()=>CT.map(x=>[x,x])};
 function cell(s,i,x,v){
  const t=x[2],at=' class="cell" data-ds="'+s+'" data-i="'+i+'" data-k="'+x[0]+'" aria-label="'+x[1]+'"';
+ if(t=="area")return '<textarea'+at+' rows="2" style="min-width:240px">'+esc(v)+'</textarea>';
  if(t=="photo")return (v?'<img src="'+v+'" alt="" style="width:36px;height:46px;object-fit:cover;border-radius:8px;vertical-align:middle;margin-right:6px">':"")+'<label class="btn sm" style="display:inline-flex;min-width:0;flex:none;cursor:pointer">'+(v?"변경":"등록")+'<input type="file" accept="image/*" hidden data-ph="'+i+'"></label>'+(v?' <button class="btn sm" data-phx="'+i+'">삭제</button>':"");
  if(LST[t])return '<select'+at+'>'+opts(LST[t](),v)+'</select>';
- return '<input'+at+(t=="num"?' type="number"':t=="date"?' type="date"':'')+' value="'+esc(v)+'">'}
+ return '<input'+at+(t=="num"?' type="number"':t=="date"?' type="date"':t=="time"?' type="time"':'')+' value="'+esc(v)+'">'}
 function vDash(){
- const pm=DB.move.filter(x=>x.status=="결재 대기").length,pb=DB.board.filter(x=>x.status=="접수 대기").length;
- return '<div class="stats">'+[["직원",DB.emp.length+"명"],["부서",DB.dept.length+"개"],["결재 대기",pm+"건"],["접수 대기",pb+"건"]].map(x=>'<div class="box stat"><span class="note">'+x[0]+'</span><b>'+x[1]+'</b></div>').join("")+'</div><div class="box"><h3>바로가기</h3><div class="row"><button class="btn cta" data-s="move">이동 신청 결재</button><button class="btn cta" data-s="board">건의·문의 답변</button></div></div>'+(ISO.length?'<div class="warn"><b>연관 없는 부서:</b> '+ISO.map(dn).join(", ")+'</div>':'')+'<div class="box"><h3>데이터 관리</h3><p class="note">위 메뉴에서 각 표를 직접 수정하면 즉시 저장되고 직원 화면에 반영됩니다. 전체 초기화는 모든 표를 샘플 데이터로 되돌립니다.</p><button class="btn sm" data-all="1">'+(armed=="all"?"정말 전체 초기화":"전체 데이터 초기화")+'</button></div>'}
+ const pm=RK.reduce((a,k)=>a+DB[k].filter(x=>x.status=="결재 대기").length,0),pb=DB.board.filter(x=>x.status=="접수 대기").length;
+ return '<div class="stats">'+[["직원",DB.emp.length+"명"],["부서",DB.dept.length+"개"],["결재 대기",pm+"건"],["접수 대기",pb+"건"]].map(x=>'<div class="box stat"><span class="note">'+x[0]+'</span><b>'+x[1]+'</b></div>').join("")+'</div><div class="box"><h3>바로가기</h3><div class="row"><button class="btn cta" data-s="move">이동 신청 결재</button><button class="btn cta" data-s="leave">휴가 결재</button><button class="btn cta" data-s="ot">초과근무 결재</button><button class="btn cta" data-s="cert">증명서 결재</button><button class="btn cta" data-s="board">건의·문의 답변</button></div></div>'+(ISO.length?'<div class="warn"><b>연관 없는 부서:</b> '+ISO.map(dn).join(", ")+'</div>':'')+'<div class="box"><h3>데이터 관리</h3><p class="note">위 메뉴에서 각 표를 직접 수정하면 즉시 저장되고 직원 화면에 반영됩니다. 전체 초기화는 모든 표를 샘플 데이터로 되돌립니다.</p><button class="btn sm" data-all="1">'+(armed=="all"?"정말 전체 초기화":"전체 데이터 초기화")+'</button></div>'}
 function vAdmin(){
  const s=sub.admin;if(s=="dash")return vDash();
  const c=SC[s],rows=DB[s];
  return '<div class="box"><div class="ch"><h3>'+c.t+' ('+rows.length+'건)</h3><div class="row" style="margin:0"><button class="btn" data-add="'+s+'">행 추가</button><button class="btn sm" data-rst="'+s+'">'+(armed=="r"+s?"정말 되돌리기":"기본값으로 되돌리기")+'</button></div></div><div class="tw"><table><tr>'+c.cols.map(x=>'<th>'+x[1]+'</th>').join("")+'<th></th></tr>'+rows.map((r,i)=>'<tr>'+c.cols.map(x=>'<td>'+cell(s,i,x,r[x[0]])+'</td>').join("")+'<td><button class="btn sm" data-rm="'+s+':'+i+'">'+(armed==s+":"+i?"정말 삭제":"삭제")+'</button></td></tr>').join("")+'</table></div>'+(rows.length?'':'<div class="empty">데이터가 없습니다. 행 추가로 입력하세요.</div>')+'</div><p class="note">'+c.n+'</p>'}
 
 /* ===== 렌더 ===== */
-const VIEW={info:{me:vMe,pay:vPay,hist:vHist,move:vMove,edu:vEdu},dept:{net:vNet,man:vMan},eval:{crit:vCrit,res:vRes,appt:vAppt},ye:{apply:vYa,prog:vYp,res:vYr}};
+const VIEW={info:{me:vMe,pay:vPay,att:vAtt,hist:vHist,move:vMove,edu:vEdu},work:{leave:vLeave,ot:vOt,cert:vCert,issue:vIssue},dept:{net:vNet,man:vMan},eval:{crit:vCrit,res:vRes,appt:vAppt},ye:{apply:vYa,prog:vYp,res:vYr}};
 function render(){
  if(sim){sim.stop();sim=null}
- $("#nav").innerHTML=TABS.filter(t=>ADMIN||t[0]!="admin").map(t=>'<button data-t="'+t[0]+'" class="'+(tab==t[0]?"on":"")+'">'+t[1]+'</button>').join("");
+ $("#nav").innerHTML=TABS.filter(t=>ADMIN||t[0]!="admin").map(t=>'<button data-t="'+t[0]+'" class="'+(tab==t[0]?"on":"")+'">'+t[1]+(t[0]=="notice"&&!ADMIN&&unreadN()?' <span class="cnt">'+unreadN()+'</span>':'')+'</button>').join("");
  $("#who").innerHTML=opts(DB.emp.map(e=>[e.id,e.name+" ("+dn(e.dept)+")"]),(me()||{}).id);
  const mm=me();$("#badge").textContent=ADMIN||!mm?"":mm.name+" 님 · "+dn(mm.dept)+" "+mm.rank;
- const need=["info","eval","board","ye"].includes(tab)&&!me();
- const f=need?()=>'<div class="warn">등록된 직원이 없습니다. 관리자 화면에서 직원을 추가하세요.</div>':tab=="board"?vBoard:tab=="admin"?vAdmin:VIEW[tab][sub[tab]];
+ const need=["info","eval","board","ye","work","appr"].includes(tab)&&!me();
+ const f=need?()=>'<div class="warn">등록된 직원이 없습니다. 관리자 화면에서 직원을 추가하세요.</div>':tab=="board"?vBoard:tab=="admin"?vAdmin:tab=="appr"?vAppr:tab=="notice"?vNotice:VIEW[tab][sub[tab]];
  $("#main").innerHTML='<h2>'+TABS.find(t=>t[0]==tab)[1]+'</h2>'+(tab=="admin"?'<div class="warn">관리자 화면입니다. 이 데모에는 로그인·권한 구분이 없고, 수정 내용은 이 브라우저에만 저장됩니다.</div>':'')+subbar()+f();
- bind();try{history.replaceState(null,"","#"+(ADMIN?"admin":tab))}catch(e){}
+ bell();bind();try{history.replaceState(null,"","#"+(ADMIN?"admin":tab))}catch(e){}
 }
 function bind(){
  const on=(s,ev,fn)=>{const e=$(s);if(e)e[ev]=fn};
@@ -308,17 +403,39 @@ function bind(){
  on("#bf","onsubmit",e=>{e.preventDefault();const f=new FormData(e.target);DB.board.unshift({emp:curId,t:sub.board,ti:f.get("ti"),dp:f.get("dp"),bd:f.get("bd"),fs:f.getAll("fl").filter(x=>x.name).map(x=>x.name),d:today(),status:"접수 대기",reply:""});save();render()});
  on("#edf","onsubmit",e=>{e.preventDefault();const f=new FormData(e.target),t=e.target.elements.to;if(f.get("to")<f.get("from")){t.setCustomValidity("종료일은 시작일 이후여야 합니다.");t.reportValidity();t.oninput=()=>t.setCustomValidity("");return}DB.edu.unshift({emp:curId,date:today(),name:f.get("name"),type:f.get("type"),org:f.get("org"),from:f.get("from"),to:f.get("to"),cost:n0(f.get("cost")),why:f.get("why"),status:"결재 대기"});save();render()});
  on("#yf","onsubmit",e=>{e.preventDefault();const f=new FormData(e.target),its=f.getAll("it"),cks=[...e.target.querySelectorAll("[name=it]")];if(!its.length){const c=cks[0];c.setCustomValidity("제출할 항목을 한 개 이상 선택하세요.");c.reportValidity();cks.forEach(x=>x.onchange=()=>c.setCustomValidity(""));return}DB.ye.unshift({emp:curId,year:f.get("year"),date:today(),dep:n0(f.get("dep")),items:its.join(", "),memo:f.get("memo"),fs:f.getAll("fl").filter(x=>x.name).map(x=>x.name),stage:"신청 접수",note:""});save();render()});
+ on("#ay","onchange",e=>{attY=e.target.value;render()});
+ on("#amo","onchange",e=>{attMo=e.target.value;render()});
+ const lf=$("#lf");if(lf){const up=()=>lf.elements.days.value=lvDays(lf)||"-";lf.addEventListener("input",up)}
+ on("#lf","onsubmit",e=>{e.preventDefault();const f=e.target,g=n=>f.elements[n].value,type=g("type"),from=g("from"),to=type.startsWith("반차")?from:g("to"),el=f.elements.to,bad=m=>{el.setCustomValidity(m);el.reportValidity();el.oninput=()=>el.setCustomValidity("")};
+  if(to<from)return bad("종료일은 시작일 이후여야 합니다.");
+  const days=lvDays(f);if(!days)return bad("주말만 포함된 기간입니다. 평일이 포함되도록 선택하세요.");
+  const lm=leaveMap(curId);for(let d=pd(from),e2=pd(to);d<=e2;d.setDate(d.getDate()+1))if(lm[fmt(d)])return bad("이미 휴가가 신청된 날짜("+fmt(d)+")가 포함되어 있습니다.");
+  if(isLD(type)){const s=lstat(curId,from.slice(0,4)),ok=s.g-s.used-s.pend;if(!s.has)return bad("해당 연도의 연차 부여 정보가 없습니다. 인사팀에 문의하세요.");if(days>ok)return bad("신청 가능한 잔여 연차("+ok+"일)를 초과했습니다.")}
+  DB.leave.unshift({id:uid(),emp:curId,date:today(),type,from,to,days,why:g("why"),status:"결재 대기",dec:""});save();render()});
+ const of=$("#of");if(of){const up=()=>{const x=otInfo(of);of.elements.hours.value=x.h?x.h:"-";$("#otp").textContent=x.type=="연장"&&x.date?"해당 주 연장근로 누적 "+x.wk+"시간 + 이번 신청 "+x.h+"시간 = "+Math.round((x.wk+x.h)*10)/10+"시간 (한도 12시간)":""};of.addEventListener("input",up)}
+ on("#of","onsubmit",e=>{e.preventDefault();const f=e.target,x=otInfo(f),el=f.elements.to,bad=m=>{el.setCustomValidity(m);el.reportValidity();el.oninput=()=>el.setCustomValidity("")};
+  if(!x.h)return bad("시작과 종료 시각이 같습니다.");
+  if(x.type=="연장"&&x.wk+x.h>12)return bad("주 12시간 한도(근로기준법 제53조 제1항)를 넘습니다. 특별연장근로 등 예외는 인사팀에 문의하세요.");
+  DB.ot.unshift({id:uid(),emp:curId,date:today(),wdate:x.date,type:x.type,from:f.elements.from.value,to:f.elements.to.value,hours:x.h,why:f.elements.why.value,status:"결재 대기",dec:""});save();render()});
+ on("#cf","onsubmit",e=>{e.preventDefault();const f=new FormData(e.target);DB.cert.unshift({id:uid(),emp:curId,date:today(),type:f.get("type"),purpose:f.get("purpose"),copies:n0(f.get("copies")),status:"결재 대기",dec:""});save();render()});
  if($("#dp")){fillPr();$("#dp").onchange=fillPr}
  if($("#net")){if(window.d3)netInit();else $("#net").insertAdjacentHTML("afterend",'<div class="warn" style="margin:10px">다이어그램 라이브러리를 불러오지 못했습니다. 새로고침해 주세요.</div>')}
 }
 document.addEventListener("click",e=>{
  const c=s=>e.target.closest(s);let b;
+ if(!c("#bp")&&!c("#bell"))$("#bp").hidden=true;
+ if(c("#bell")){$("#bp").hidden=!$("#bp").hidden;return}
  if(b=c("[data-t]")){tab=b.dataset.t;editing=null;armed="";render()}
  else if(b=c("[data-s]")){sub[tab]=b.dataset.s;editing=null;armed="";render()}
  else if(c("[data-pk]")){pY=$("#py").value;pM=$("#pm").value;selM=pY+"-"+pM;render()}
  else if(b=c("[data-edit]")){editing=b.dataset.edit;render()}
  else if(c("[data-cancel]")){editing=null;render()}
- else if(b=c("[data-add]")){const s=b.dataset.add;DB[s].push(blank(s));save();render()}
+ else if(b=c("[data-al]")){const s=LS("hr_seen")||{},x=alerts().find(a=>a.id==b.dataset.al);if(x){s[x.id]=x.st;SV("hr_seen",s)}$("#bp").hidden=true;tab="appr";sub.appr="all";render()}
+ else if(c("[data-readall]")){const s=LS("hr_seen")||{};alerts().forEach(x=>s[x.id]=x.st);SV("hr_seen",s);render()}
+ else if(b=c("[data-cert]")){selCert=b.dataset.cert;render()}
+ else if(c("[data-pr]")){window.print()}
+ else if(b=c("[data-nt]")){const id=b.dataset.nt,rd=LS("hr_nread")||[];if(!rd.includes(id)){rd.push(id);SV("hr_nread",rd)}selN=selN==id?null:id;render()}
+ else if(b=c("[data-add]")){const s=b.dataset.add,row=blank(s);if(RK.includes(s)||s=="notice")row.id=uid();DB[s].push(row);save();render()}
  else if(b=c("[data-rm]")){const[s,i]=b.dataset.rm.split(":");if(armed==b.dataset.rm){DB[s].splice(+i,1);armed="";save()}else armed=b.dataset.rm;render()}
  else if(b=c("[data-rst]")){const s=b.dataset.rst;if(armed=="r"+s){DB[s]=DEF()[s];armed="";save()}else armed="r"+s;render()}
  else if(b=c("[data-phx]")){DB.emp[+b.dataset.phx].photo="";save();render()}
@@ -328,8 +445,8 @@ function photoUp(inp){const f=inp.files[0],i=+inp.dataset.ph;if(!f)return;
  const rd=new FileReader();rd.onload=()=>{const im=new Image();im.onload=()=>{const k=Math.min(1,240/Math.max(im.width,im.height)),cv=document.createElement("canvas");cv.width=Math.round(im.width*k);cv.height=Math.round(im.height*k);cv.getContext("2d").drawImage(im,0,0,cv.width,cv.height);DB.emp[i].photo=cv.toDataURL("image/jpeg",.82);save();render()};im.src=rd.result};rd.readAsDataURL(f)}
 document.addEventListener("change",e=>{
  const t=e.target;if(t.dataset&&t.dataset.ph!=null){photoUp(t);return}if(!t.dataset||t.dataset.ds==null)return;
- const s=t.dataset.ds,r=DB[s][+t.dataset.i],k=t.dataset.k,old=r[k],v=t.type=="number"?n0(t.value):t.value;r[k]=v;
- if(s=="emp"&&k=="id"){["pay","hist","res","appt","move","board","edu","ye","yer"].forEach(n=>DB[n].forEach(x=>{if(x.emp==old)x.emp=v}));if(curId==old){curId=v;SV("hr_cur",v)}if(gid()==old)SV("hr_gid",v);}
+ const s=t.dataset.ds,r=DB[s][+t.dataset.i],k=t.dataset.k,old=r[k],v=t.type=="number"?n0(t.value):t.value;r[k]=v;if(k=="status"&&RK.includes(s))r.dec=v=="결재 대기"?"":nowS();
+ if(s=="emp"&&k=="id"){["pay","hist","res","appt","move","board","edu","ye","yer","leave","grant","att","ot","cert"].forEach(n=>DB[n].forEach(x=>{if(x.emp==old)x.emp=v}));if(curId==old){curId=v;SV("hr_cur",v)}if(gid()==old)SV("hr_gid",v);}
  if(s=="dept"&&k=="id"){DB.emp.forEach(x=>{if(x.dept==old)x.dept=v});DB.edge.forEach(x=>{if(x.a==old)x.a=v;if(x.b==old)x.b=v})}
  save()});
 $("#who").onchange=e=>{curId=e.target.value;SV("hr_cur",curId);selM=null;editing=null;render()};
@@ -337,9 +454,10 @@ $("#q").addEventListener("keydown",e=>{
  if(e.key!="Enter")return;const v=e.target.value.trim();if(!v)return;
  const d=D.find(x=>x[1].includes(v)||x[3].some(m=>m[0].includes(v)));
  if(d){tab="dept";sub.dept="net";selD=d[0];render()}else e.target.placeholder="검색 결과가 없습니다"});
-function setMode(){ADMIN=location.hash.slice(1)=="admin";curId=ADMIN?(LS("hr_cur")||gid()):gid();$("#who").hidden=!ADMIN;$("#q").hidden=!ADMIN;if(ADMIN)tab="admin";else if(tab=="admin")tab="info"}
+function setMode(){ADMIN=false;curId=ADMIN?(LS("hr_cur")||gid()):gid();$("#who").hidden=!ADMIN;$("#q").hidden=!ADMIN;if(ADMIN)tab="admin";else if(tab=="admin")tab="info"}
 addEventListener("hashchange",()=>{const h=location.hash.slice(1);if((h=="admin")!=ADMIN){setMode();selM=null;render()}else if(!ADMIN&&SUBS[h]&&h!=tab){tab=h;render()}});
 const h0=location.hash.slice(1);setMode();if(!ADMIN&&SUBS[h0])tab=h0;
+addEventListener("storage",e=>{if(e.key!="hr_db")return;try{DB=Object.assign(DEF(),JSON.parse(e.newValue)||{});derive();const a=document.activeElement;if(a&&/INPUT|TEXTAREA|SELECT/.test(a.tagName))bell();else render()}catch(x){}});
 render();
 </script>
 </body>
