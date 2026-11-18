@@ -104,6 +104,7 @@
       </select>
       <button class="btn" id="plus" aria-label="시각 더하기">+</button>
       <button class="btn" id="play">▶ 재생</button>
+      <button class="btn" id="nowBtn" title="현재 한국 시간의 요일·시각으로 맞추기">🕒 지금</button>
     </div>
     <input type="range" id="timeRange" min="0" max="1440" step="5" value="480">
     <div class="ticks"><span>00</span><span>03</span><span>06</span><span>09</span><span>12</span><span>15</span><span>18</span><span>21</span><span>24</span></div>
@@ -133,6 +134,7 @@
     <div class="legend">
       <span>시간당 차량 대수</span>
       <span id="legMin">0</span><span class="grad"></span><span id="legMax">-</span>
+      <span style="display:inline-flex;align-items:center;gap:4px"><span style="width:12px;height:12px;border-radius:50%;background:#d03b3b;display:inline-block"></span><b>빨강 = 현재 1위 지점</b></span>
       <span>· 원이 크고 진할수록 많음 · 회색 = 자료 없음 · 확대하면 상세 지도와 지점 이름 표시 (오른쪽 위 ▤ 에서 지도 종류 변경)</span>
     </div>
     <div class="groups" id="groupFilters" style="margin-top:10px"></div>
@@ -218,7 +220,7 @@ const tt=document.getElementById('tt');
 function showTT(html,x,y){tt.innerHTML=html;tt.style.display='block';const w=tt.offsetWidth;tt.style.left=Math.min(window.innerWidth-w-8,x+14)+'px';tt.style.top=(y+14)+'px';}
 function hideTT(){tt.style.display='none';}
 function ttHtml(p,v){const way=state.dir==='i'?p.wayI:state.dir==='o'?p.wayO:(p.wayI+' / 반대 방향');
-  return `<b>${esc(p.name)}</b> (${esc(p.code)} · ${esc(p.group)})<br><span style="color:var(--muted)">${esc(p.addr)}<br>${esc(way)}</span><br>${dayLabel()} ${hhmm(state.minute)} · ${DIRNAME[state.dir]}<br><b>${v==null?'자료 없음':fmt(v)+' 대/시'}</b>`;}
+  return `<b>${esc(p.name)}</b> (${esc(p.code)} · ${esc(p.group)})<br><span style="color:var(--muted)">${esc(p.addr)}<br>${esc(way)}</span><br>${dayLabel()} ${hhmm(state.minute)} · ${DIRNAME[state.dir]}<br><b>${v==null?'자료 없음':fmt(v)+' 대/시'}</b>${topIds().has(p.id)?'<br><b style="color:'+TOP_RED+'">● 현재 차량 이동 1위</b>':''}`;}
 
 /* 지도 */
 let map=null, markers=[], guLayer=null, useLeaflet = typeof L!=='undefined';
@@ -262,9 +264,15 @@ function initMap(){
   if(!useLeaflet){document.getElementById('map').style.display='none';document.getElementById('svgmap').style.display='block';}
   drawMarkers(true);
 }
+const TOP_RED='#d03b3b';
+// 현재 조건에서 차량 대수가 가장 많은 지점(동점이면 모두)
+function topIds(){ let mx=-1, ids=new Set();
+  points.forEach(p=>{ if(!state.groups.has(p.group)) return; const v=valueAt(p,state.minute); if(v==null) return;
+    if(v>mx+1e-9){mx=v;ids=new Set([p.id]);} else if(Math.abs(v-mx)<=1e-9) ids.add(p.id); });
+  return ids; }
 function drawMarkers(fit){
   if(!useLeaflet){drawSvgMap();return;}
-  const bounds=[];
+  const bounds=[], tops=topIds();
   // 작은 원이 위에 오도록 큰 값부터 그림
   const order=[...points].sort((a,b)=>(valueAt(b,state.minute)||0)-(valueAt(a,state.minute)||0));
   order.forEach(p=>{
@@ -279,10 +287,12 @@ function drawMarkers(fit){
     }
     const vis=state.groups.has(p.group), v=valueAt(p,state.minute), sel=p.id===state.selected;
     if(vis){ if(!map.hasLayer(m)) m.addTo(map); } else if(map.hasLayer(m)) m.remove();
-    m.setStyle({fillColor:colorFor(v),color:sel?'#1f1f1d':'#ffffff',weight:sel?3:1.5});
+    const isTop=tops.has(p.id);
+    m.setStyle({fillColor:isTop?TOP_RED:colorFor(v),fillOpacity:isTop?0.95:0.85,color:sel?'#1f1f1d':'#ffffff',weight:sel?3:(isTop?2.5:1.5)});
     m.setRadius(radiusFor(v)); m.setLatLng(posOf(p));
     if(vis){ m.bringToFront(); bounds.push(posOf(p)); }
   });
+  tops.forEach(id=>{ if(markers[id] && map.hasLayer(markers[id])) markers[id].bringToFront(); });
   if(markers[state.selected] && map.hasLayer(markers[state.selected])) markers[state.selected].bringToFront();
   if(fit && bounds.length) map.fitBounds(bounds,{padding:[20,20]});
   updateLabels();
@@ -297,8 +307,9 @@ function drawSvgMap(){
   const X=lo=>pad+(lo-lo0)*k*s, Y=la=>H-pad-(la-la0)*s;
   const order=[...points].sort((a,b)=>(valueAt(b,state.minute)||0)-(valueAt(a,state.minute)||0));
   let h=`<rect width="${W}" height="${H}" fill="var(--bg)"/><text x="10" y="18" font-size="11" fill="var(--muted)">배경지도를 불러오지 못해 간이 지도로 표시 중 (인터넷 연결 시 지도 표시)</text>`;
+  const tops=topIds();
   order.forEach(p=>{ if(!state.groups.has(p.group)) return; const v=valueAt(p,state.minute), sel=p.id===state.selected;
-    h+=`<circle data-id="${p.id}" cx="${X(p.lon).toFixed(1)}" cy="${Y(p.lat).toFixed(1)}" r="${radiusFor(v).toFixed(1)}" fill="${colorFor(v)}" fill-opacity="0.85" stroke="${sel?'var(--ink)':'var(--surface)'}" stroke-width="${sel?3:1.5}" style="cursor:pointer"/>`;});
+    h+=`<circle data-id="${p.id}" cx="${X(p.lon).toFixed(1)}" cy="${Y(p.lat).toFixed(1)}" r="${radiusFor(v).toFixed(1)}" fill="${tops.has(p.id)?TOP_RED:colorFor(v)}" fill-opacity="0.85" stroke="${sel?'var(--ink)':'var(--surface)'}" stroke-width="${sel?3:1.5}" style="cursor:pointer"/>`;});
   svg.setAttribute('viewBox',`0 0 ${W} ${H}`); svg.innerHTML=h;
   svg.querySelectorAll('circle').forEach(c=>{const p=points[+c.dataset.id];
     c.addEventListener('mousemove',e=>showTT(ttHtml(p,valueAt(p,state.minute)),e.clientX,e.clientY));
@@ -323,7 +334,7 @@ function updatePanels(){
   document.getElementById('rank').innerHTML=top.map((o,i)=>
     `<div class="row${o.p.id===state.selected?' sel':''}" data-id="${o.p.id}" title="${esc(o.p.name)} (${esc(o.p.code)})">
       <span class="n">${i+1}</span><span class="nm">${esc(o.p.name)}</span>
-      <span><div class="bar" style="width:${Math.max(2,o.v/mx*100)}%"></div></span><span class="val">${fmt(o.v)}</span></div>`).join('')
+      <span><div class="bar" style="width:${Math.max(2,o.v/mx*100)}%${i===0?';background:'+TOP_RED:''}"></div></span><span class="val">${fmt(o.v)}</span></div>`).join('')
     || '<div class="muted">선택한 조건에 자료가 없습니다.</div>';
   document.querySelectorAll('#rank .row').forEach(r=>r.addEventListener('click',()=>{state.selected=+r.dataset.id;update();}));
   const rows=vis.sort((a,b)=>(b.v??-1)-(a.v??-1)).map(o=>`<tr><td>${esc(o.p.code)}</td><td>${esc(o.p.name)}</td><td>${esc(o.p.group)}</td><td class="r">${o.v==null?'자료 없음':fmt(o.v)}</td></tr>`).join('');
@@ -408,7 +419,15 @@ document.querySelectorAll('#dirChips .chip').forEach(b=>b.addEventListener('clic
 function update(){ drawMarkers(false); updatePanels(); drawDetail(); }
 window.addEventListener('resize',()=>{ if(!useLeaflet) drawSvgMap(); drawDetail(); });
 
-syncDays(); computeMax(); initMap(); setMinute(480);
+// 한국 시간(Asia/Seoul) 기준 현재 요일·시각 (5분 단위로 내림)
+function nowKST(){
+  const f=new Intl.DateTimeFormat('en-US',{timeZone:'Asia/Seoul',weekday:'short',hour:'2-digit',minute:'2-digit',hourCycle:'h23'});
+  const o={}; f.formatToParts(new Date()).forEach(x=>o[x.type]=x.value);
+  return {dow:['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].indexOf(o.weekday), minute:Math.floor(((+o.hour)%24*60+(+o.minute))/5)*5};
+}
+function goNow(){ const n=nowKST(); if(n.dow>=0) state.days=new Set([n.dow]); syncDays(); setMinute(n.minute); }
+document.getElementById('nowBtn').addEventListener('click',goNow);
+computeMax(); initMap(); goNow();
 })();
 </script>
 </body>
