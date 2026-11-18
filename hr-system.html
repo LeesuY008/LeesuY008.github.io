@@ -78,6 +78,7 @@ svg{touch-action:none;width:100%;height:auto;display:block}
 .ck{display:flex;flex-direction:row;align-items:center;gap:6px;min-width:0;flex:none;font-size:14px;color:var(--ink)}
 .photo{overflow:hidden}.photo img{width:100%;height:100%;object-fit:cover}
 .bellb{position:relative;border:0;background:none;font-size:20px;cursor:pointer;padding:4px 8px;border-radius:12px;color:var(--ink)}
+.apb{font-size:14px;font-weight:700;padding:6px 10px;background:var(--panel);border:1px solid var(--line);border-radius:12px;margin-right:6px}
 .bc{position:absolute;top:-2px;right:-2px;background:var(--acc);color:#fff;font-size:11px;font-weight:700;min-width:18px;height:18px;line-height:18px;border-radius:9px;text-align:center;padding:0 4px;font-family:inherit}
 .bp{position:absolute;right:16px;top:100%;width:min(380px,calc(100vw - 32px));max-height:70vh;overflow:auto;background:var(--panel);border:1px solid var(--line);border-radius:var(--r);box-shadow:0 10px 30px rgba(0,0,0,.18);padding:10px;z-index:10}
 .al{display:flex;gap:8px;align-items:flex-start;width:100%;text-align:left;border:0;background:none;color:var(--ink);font:inherit;padding:8px;border-radius:10px;cursor:pointer}
@@ -103,6 +104,7 @@ a.btn{text-decoration:none;display:inline-block}
   <input id="q" type="search" placeholder="부서·직원 검색" aria-label="부서 또는 직원 검색">
   <select id="who" aria-label="보기 계정"></select>
   <nav id="nav" aria-label="주 메뉴"></nav>
+  <button id="apb" class="bellb apb" aria-label="결재 처리" hidden>✅ 결재<span id="apc" class="bc" hidden></span></button>
   <button id="bell" class="bellb" aria-label="알림">🔔<span id="bc" class="bc" hidden></span></button>
   <div id="bp" class="bp" hidden></div>
 </header>
@@ -171,7 +173,7 @@ const awards=m=>(m.awards||"").split(";").map(s=>s.trim()).filter(Boolean).map(s
 /* ===== 상태·공통 ===== */
 const TABS=[["info","인사정보"],["dept","부서별 업무·연관"],["eval","인사평가·발령"],["work","근태관리·증명서발급"],["ye","연말정산"],["board","건의·문의"],["appr","결재함"],["notice","공지사항"],["admin","관리자"]];
 const SUBS={info:[["me","개인정보"],["pay","급여"],["att","근태현황"],["hist","부서이동 이력"],["move","부서이동 신청"],["edu","교육 신청"]],dept:[["net","연관도"],["man","업무 매뉴얼"]],eval:[["crit","평가 항목"],["res","내 평가 결과"],["appt","인사발령 결과"]],work:[["leave","휴가 신청"],["ot","초과근무 신청"],["cert","증명서 신청"],["issue","증명서 발급"]],appr:[["all","전체"],["pend","결재 대기"],["done","승인·발급"],["rej","반려"]],notice:[["list","공지 목록"]],ye:[["apply","연말정산 신청"],["prog","연말정산 진행"],["res","연말정산 결과"]],board:[["건의사항","건의사항"],["문의사항","문의사항"],["칭찬합니다","칭찬합니다"]],
- admin:[["dash","현황"],["emp","직원"],["dept","부서"],["edge","연관도"],["pay","급여"],["hist","이동 이력"],["crit","평가 항목"],["res","평가 결과"],["appt","발령"],["move","이동 신청 결재"],["board","건의·문의 답변"],["edu","교육 신청 결재"],["ye","연말정산 진행"],["yer","연말정산 결과"],["leave","휴가 결재"],["grant","연차 부여"],["att","근태 기록"],["ot","초과근무 결재"],["cert","증명서 결재"],["notice","공지사항"],["manual","매뉴얼"]]};
+ admin:[["dash","현황"],["appr","결재 처리"],["emp","직원"],["dept","부서"],["edge","연관도"],["pay","급여"],["hist","이동 이력"],["crit","평가 항목"],["res","평가 결과"],["appt","발령"],["move","이동 신청 결재"],["board","건의·문의 답변"],["edu","교육 신청 결재"],["ye","연말정산 진행"],["yer","연말정산 결과"],["leave","휴가 결재"],["grant","연차 부여"],["att","근태 기록"],["ot","초과근무 결재"],["cert","증명서 결재"],["notice","공지사항"],["manual","매뉴얼"]]};
 let tab="info",sub={info:"me",dept:"net",eval:"crit",ye:"apply",work:"leave",appr:"all",notice:"list",board:"건의사항",admin:"dash"},selM=null,selD=null,editing=null,sim=null,POSMEM={},armed="",pY="",pM="01",attY="",attMo="",selCert=null,selN=null;
 const subbar=()=>SUBS[tab].length<2?"":'<div class="sub">'+SUBS[tab].map(s=>'<button data-s="'+s[0]+'" class="'+(sub[tab]==s[0]?"on":"")+'">'+s[1]+'</button>').join("")+'</div>';
 const tbl=(h,rows)=>'<div class="tw"><table><tr>'+h.map(x=>'<th>'+x+'</th>').join("")+'</tr>'+rows.map(r=>'<tr>'+r.map(c=>'<td>'+c+'</td>').join("")+'</tr>').join("")+'</table></div>';
@@ -237,8 +239,15 @@ const unreadN=()=>{const rd=LS("hr_nread")||[];return DB.notice.filter(n=>!rd.in
 const RQ=[["move","부서이동",r=>"희망 부서 "+r.to+" ("+r.dt+")"],["edu","교육",r=>r.name+" ("+r.from+" ~ "+r.to+")"],["leave","휴가",r=>r.type+" "+r.from+(r.to!=r.from?" ~ "+r.to:"")+" ("+r.days+"일)"],["ot","초과근무",r=>r.wdate+" "+r.type+" "+r.from+"~"+r.to+" ("+r.hours+"시간)"],["cert","증명서",r=>r.type+" "+n0(r.copies)+"부 ("+r.purpose+")"]];
 const allReqs=emp=>RQ.flatMap(([k,l,f])=>DB[k].filter(r=>r.emp==emp).map(r=>({id:r.id,label:l,sum:f(r),date:r.date||"",st:r.status,dec:r.dec||""})));
 function alerts(){return allReqs(curId).filter(r=>r.st!="결재 대기").sort((a,b)=>a.dec<b.dec?1:-1).slice(0,15)}
+const pendAll=()=>RQ.flatMap(([k,l,f])=>DB[k].filter(r=>r.status=="결재 대기").map(r=>({k,id:r.id,emp:r.emp,label:l,sum:f(r),date:r.date||"",r})));
+const ename=id=>{const e=DB.emp.find(x=>x.id==id);return e?e.name:id};
 function bell(){
- const b=$("#bell"),p=$("#bp");b.hidden=ADMIN;if(ADMIN){p.hidden=true;return}
+ const b=$("#bell"),p=$("#bp"),ab=$("#apb");b.hidden=false;ab.hidden=!ADMIN;
+ if(ADMIN){
+  const pa=pendAll(),seen=LS("hr_aseen")||[],nw=pa.filter(x=>!seen.includes(x.id)).length;
+  $("#apc").textContent=pa.length;$("#apc").hidden=!pa.length;$("#bc").textContent=nw;$("#bc").hidden=!nw;
+  p.innerHTML='<div class="ch"><h3>새 결재 요청</h3><button class="btn sm" data-areadall="1">모두 읽음</button></div>'+(pa.length?pa.map(x=>{const n=!seen.includes(x.id);return '<button class="al'+(n?" new":"")+'" data-aal="'+esc(x.id)+'"><span class="st pend">결재 대기</span><span style="flex:1">'+esc(ename(x.emp))+" · "+esc(x.label)+" 신청<br>"+'<span class="note">'+esc(x.sum)+" · "+esc(x.date)+'</span></span>'+(n?'<span class="nw">NEW</span>':"")+'</button>'}).join(""):'<div class="empty">대기 중인 결재가 없습니다.</div>');
+  return}
  const a=alerts(),seen=LS("hr_seen")||{},nw=a.filter(x=>seen[x.id]!=x.st).length;
  $("#bc").textContent=nw;$("#bc").hidden=!nw;
  p.innerHTML='<div class="ch"><h3>알림</h3><button class="btn sm" data-readall="1">모두 읽음</button></div>'+(a.length?a.map(x=>{const n=seen[x.id]!=x.st;return '<button class="al'+(n?" new":"")+'" data-al="'+esc(x.id)+'"><span class="st '+(MVC[x.st]||"pend")+'">'+esc(x.st)+'</span><span style="flex:1">'+esc(x.label)+" 신청이 "+(x.st=="발급 완료"?"발급 완료되었습니다":esc(x.st)+"되었습니다")+'<br><span class="note">'+esc(x.sum)+" · "+esc(x.dec)+'</span></span>'+(n?'<span class="nw">NEW</span>':"")+'</button>'}).join(""):'<div class="empty">새 알림이 없습니다.</div>')}
@@ -358,32 +367,39 @@ const SC={
  crit:{t:"평가 항목",n:"평가 결과의 점수1~4는 이 표의 위에서부터 순서대로 대응합니다. 가중치 합계가 100이 아니어도 비율로 환산됩니다.",cols:[C("name","항목명"),C("desc","내용"),C("weight","가중치","num")]},
  res:{t:"평가 결과",n:"점수1~4는 평가 항목 표의 1~4번째 항목 점수입니다.",cols:[C("emp","직원","emp"),C("period","평가 기간"),C("s1","점수1","num"),C("s2","점수2","num"),C("s3","점수3","num"),C("s4","점수4","num")]},
  appt:{t:"인사발령",n:"직원 화면의 인사발령 결과에 표시됩니다.",cols:[C("emp","직원","emp"),C("date","발령일","date"),C("type","구분"),C("content","내용")]},
- move:{t:"부서이동 신청 결재",n:"상태를 승인 또는 반려로 바꾸면 직원 화면의 신청 내역에 바로 반영됩니다.",cols:[C("emp","신청자","emp"),C("date","신청일","date"),C("to","희망 부서"),C("dt","희망일","date"),C("why","사유"),C("status","상태","mv")]},
+ move:{t:"부서이동 신청 결재",n:"상태는 '결재 처리' 메뉴(또는 우측 상단 결재 버튼)에서만 바뀌며, 처리하면 직원 화면의 신청 내역에 바로 반영됩니다.",cols:[C("emp","신청자","emp"),C("date","신청일","date"),C("to","희망 부서"),C("dt","희망일","date"),C("why","사유"),C("status","상태","mv"),C("dec","처리일시")]},
  board:{t:"건의·문의 답변",n:"답변을 입력하고 상태를 바꾸면 직원 화면의 접수 내역에 반영됩니다.",cols:[C("emp","작성자","emp"),C("t","구분"),C("ti","제목"),C("dp","관련 부서"),C("bd","내용"),C("d","접수일","date"),C("status","상태","bs"),C("reply","답변")]},
  manual:{t:"업무 매뉴얼",n:"등록된 매뉴얼 목록을 수정하거나 삭제합니다.",cols:[C("dp","부서","dept"),C("pr","담당"),C("f","파일명"),C("d","등록일","date")]},
- edu:{t:"교육 신청 결재",n:"상태를 승인 또는 반려로 바꾸면 직원 화면의 교육 신청 내역에 반영됩니다.",cols:[C("emp","신청자","emp"),C("date","신청일","date"),C("name","교육과정명"),C("type","구분"),C("org","교육기관"),C("from","시작일","date"),C("to","종료일","date"),C("cost","교육비","num"),C("why","사유"),C("status","상태","mv")]},
+ edu:{t:"교육 신청 결재",n:"상태는 '결재 처리' 메뉴(또는 우측 상단 결재 버튼)에서만 바뀌며, 처리하면 직원 화면의 교육 신청 내역에 반영됩니다.",cols:[C("emp","신청자","emp"),C("date","신청일","date"),C("name","교육과정명"),C("type","구분"),C("org","교육기관"),C("from","시작일","date"),C("to","종료일","date"),C("cost","교육비","num"),C("why","사유"),C("status","상태","mv"),C("dec","처리일시")]},
  ye:{t:"연말정산 신청·진행",n:"진행 단계를 바꾸고 인사팀 안내를 쓰면 직원 화면의 연말정산 진행에 표시됩니다.",cols:[C("emp","직원","emp"),C("year","귀속연도"),C("date","신청일","date"),C("dep","부양가족","num"),C("items","제출 항목"),C("memo","메모"),C("stage","진행 단계","ys"),C("note","인사팀 안내")]},
  yer:{t:"연말정산 결과",n:"결정세액과 기납부세액을 입력하면 차감징수세액(결정세액 - 기납부세액)이 직원 화면에 계산되어 표시됩니다. 세액 자체는 이 시스템이 계산하지 않으므로 정산 결과 값을 직접 입력합니다.",cols:[C("emp","직원","emp"),C("year","귀속연도"),C("total","총급여","num"),C("tax","결정세액","num"),C("paid","기납부세액","num"),C("note","비고")]},
- leave:{t:"휴가 신청 결재",n:"상태를 승인 또는 반려로 바꾸면 직원 화면의 휴가 신청 내역, 근태현황, 잔여 연차, 알림에 반영됩니다. 연차와 반차만 잔여 연차에서 차감됩니다.",cols:[C("emp","신청자","emp"),C("date","신청일","date"),C("type","유형","lt"),C("from","시작일","date"),C("to","종료일","date"),C("days","일수","num"),C("why","사유"),C("status","상태","mv"),C("dec","처리일시")]},
+ leave:{t:"휴가 신청 결재",n:"상태는 '결재 처리' 메뉴(또는 우측 상단 결재 버튼)에서만 바뀌며, 처리하면 직원 화면의 휴가 신청 내역, 근태현황, 잔여 연차, 알림에 반영됩니다. 연차와 반차만 잔여 연차에서 차감됩니다.",cols:[C("emp","신청자","emp"),C("date","신청일","date"),C("type","유형","lt"),C("from","시작일","date"),C("to","종료일","date"),C("days","일수","num"),C("why","사유"),C("status","상태","mv"),C("dec","처리일시")]},
  grant:{t:"연차 부여",n:"직원별·연도별 부여 일수를 입력합니다. 법정 연차 발생 일수는 근로기준법 제60조 기준이며 입사일과 출근율 등에 따라 달라지므로, 이 시스템은 자동 계산하지 않고 입력한 값을 사용합니다.",cols:[C("emp","직원","emp"),C("year","연도"),C("days","부여 일수","num")]},
  att:{t:"근태 기록",n:"출근·퇴근 시각을 입력합니다. 기준 출근시각(09:00)보다 늦은 출근은 지각으로 집계됩니다. 승인된 휴가는 근태현황에 자동으로 표시됩니다.",cols:[C("emp","직원","emp"),C("date","일자","date"),C("in","출근","time"),C("out","퇴근","time")]},
- ot:{t:"초과근무 결재",n:"상태를 승인 또는 반려로 바꾸면 직원 화면, 근태현황, 알림에 반영됩니다.",cols:[C("emp","신청자","emp"),C("date","신청일","date"),C("wdate","근무일","date"),C("type","유형","ott"),C("from","시작","time"),C("to","종료","time"),C("hours","시간","num"),C("why","사유"),C("status","상태","mv"),C("dec","처리일시")]},
- cert:{t:"증명서 결재",n:"상태를 발급 완료로 바꾸면 직원 화면의 증명서 발급 목록에서 문서를 열 수 있습니다. 반려하면 알림으로 전달됩니다.",cols:[C("emp","신청자","emp"),C("date","신청일","date"),C("type","종류","ct"),C("purpose","용도·제출처"),C("copies","부수","num"),C("status","상태","cs"),C("dec","처리일시")]},
+ ot:{t:"초과근무 결재",n:"상태는 '결재 처리' 메뉴(또는 우측 상단 결재 버튼)에서만 바뀌며, 처리하면 직원 화면, 근태현황, 알림에 반영됩니다.",cols:[C("emp","신청자","emp"),C("date","신청일","date"),C("wdate","근무일","date"),C("type","유형","ott"),C("from","시작","time"),C("to","종료","time"),C("hours","시간","num"),C("why","사유"),C("status","상태","mv"),C("dec","처리일시")]},
+ cert:{t:"증명서 결재",n:"상태는 '결재 처리' 메뉴(또는 우측 상단 결재 버튼)에서만 바뀌며, 처리하면 직원 화면의 증명서 발급 목록에서 문서를 열 수 있습니다. 반려하면 알림으로 전달됩니다.",cols:[C("emp","신청자","emp"),C("date","신청일","date"),C("type","종류","ct"),C("purpose","용도·제출처"),C("copies","부수","num"),C("status","상태","cs"),C("dec","처리일시")]},
  notice:{t:"공지사항",n:"공지사항은 이 화면에서만 등록·수정·삭제할 수 있습니다. 구분을 고정으로 두면 목록 맨 위에 표시됩니다.",cols:[C("title","제목"),C("body","내용","area"),C("date","게시일","date"),C("pin","구분","pin"),C("file","첨부 파일 주소(URL)"),C("fname","첨부 파일 이름")]}};
 const BL={dept:()=>DB.dept[0]?DB.dept[0].id:"",emp:()=>DB.emp[0]?DB.emp[0].id:"",st:()=>"재직중",grp:()=>"mgmt",mv:()=>"결재 대기",bs:()=>"접수 대기",ys:()=>"신청 접수",pin:()=>"",cs:()=>"결재 대기",lt:()=>"연차",ott:()=>"연장",ct:()=>"재직증명서",date:today};
 const blank=s=>Object.fromEntries(SC[s].cols.map(x=>[x[0],BL[x[2]]?BL[x[2]]():x[2]=="num"?0:""]));
 const LST={dept:()=>D.map(d=>[d[0],d[1]]),emp:()=>DB.emp.map(e=>[e.id,e.name+" "+e.id]),st:()=>ST.map(x=>[x,x]),grp:()=>Object.entries(G),mv:()=>MV.map(x=>[x,x]),bs:()=>BS.map(x=>[x,x]),ys:()=>STG.map(x=>[x,x]),pin:()=>[["","일반"],["Y","고정"]],cs:()=>CS.map(x=>[x,x]),lt:()=>LT.map(x=>[x,x]),ott:()=>OTT.map(x=>[x,x]),ct:()=>CT.map(x=>[x,x])};
 function cell(s,i,x,v){
  const t=x[2],at=' class="cell" data-ds="'+s+'" data-i="'+i+'" data-k="'+x[0]+'" aria-label="'+x[1]+'"';
+ if(RK.includes(s)&&(x[0]=="status"||x[0]=="dec"))return x[0]=="dec"?esc(v||"-"):'<span class="st '+(MVC[v]||"pend")+'">'+esc(v)+'</span>';
  if(t=="area")return '<textarea'+at+' rows="2" style="min-width:240px">'+esc(v)+'</textarea>';
  if(t=="photo")return (v?'<img src="'+v+'" alt="" style="width:36px;height:46px;object-fit:cover;border-radius:8px;vertical-align:middle;margin-right:6px">':"")+'<label class="btn sm" style="display:inline-flex;min-width:0;flex:none;cursor:pointer">'+(v?"변경":"등록")+'<input type="file" accept="image/*" hidden data-ph="'+i+'"></label>'+(v?' <button class="btn sm" data-phx="'+i+'">삭제</button>':"");
  if(LST[t])return '<select'+at+'>'+opts(LST[t](),v)+'</select>';
  return '<input'+at+(t=="num"?' type="number"':t=="date"?' type="date"':t=="time"?' type="time"':'')+' value="'+esc(v)+'">'}
 function vDash(){
  const pm=RK.reduce((a,k)=>a+DB[k].filter(x=>x.status=="결재 대기").length,0),pb=DB.board.filter(x=>x.status=="접수 대기").length;
- return '<div class="stats">'+[["직원",DB.emp.length+"명"],["부서",DB.dept.length+"개"],["결재 대기",pm+"건"],["접수 대기",pb+"건"]].map(x=>'<div class="box stat"><span class="note">'+x[0]+'</span><b>'+x[1]+'</b></div>').join("")+'</div><div class="box"><h3>바로가기</h3><div class="row"><button class="btn cta" data-s="move">이동 신청 결재</button><button class="btn cta" data-s="leave">휴가 결재</button><button class="btn cta" data-s="ot">초과근무 결재</button><button class="btn cta" data-s="cert">증명서 결재</button><button class="btn cta" data-s="board">건의·문의 답변</button></div></div>'+(ISO.length?'<div class="warn"><b>연관 없는 부서:</b> '+ISO.map(dn).join(", ")+'</div>':'')+'<div class="box"><h3>데이터 관리</h3><p class="note">위 메뉴에서 각 표를 직접 수정하면 즉시 저장되고 직원 화면에 반영됩니다. 전체 초기화는 모든 표를 샘플 데이터로 되돌립니다.</p><button class="btn sm" data-all="1">'+(armed=="all"?"정말 전체 초기화":"전체 데이터 초기화")+'</button></div>'}
+ return '<div class="stats">'+[["직원",DB.emp.length+"명"],["부서",DB.dept.length+"개"],["결재 대기",pm+"건"],["접수 대기",pb+"건"]].map(x=>'<div class="box stat"><span class="note">'+x[0]+'</span><b>'+x[1]+'</b></div>').join("")+'</div><div class="box"><h3>바로가기</h3><div class="row"><button class="btn cta" data-s="appr">결재 처리 ('+pm+'건)</button><button class="btn" data-s="move">이동 신청 내역</button><button class="btn" data-s="leave">휴가 내역</button><button class="btn" data-s="ot">초과근무 내역</button><button class="btn" data-s="cert">증명서 내역</button><button class="btn cta" data-s="board">건의·문의 답변</button></div></div>'+(ISO.length?'<div class="warn"><b>연관 없는 부서:</b> '+ISO.map(dn).join(", ")+'</div>':'')+'<div class="box"><h3>데이터 관리</h3><p class="note">위 메뉴에서 각 표를 직접 수정하면 즉시 저장되고 직원 화면에 반영됩니다. 전체 초기화는 모든 표를 샘플 데이터로 되돌립니다.</p><button class="btn sm" data-all="1">'+(armed=="all"?"정말 전체 초기화":"전체 데이터 초기화")+'</button></div>'}
+const SOK={cert:"발급 완료"};
+function vApprAdmin(){
+ const pa=pendAll().sort((a,b)=>a.date<b.date?1:-1);
+ const dn2=RQ.flatMap(([k,l,f])=>DB[k].filter(r=>r.status!="결재 대기"&&r.dec).map(r=>({k,id:r.id,emp:r.emp,label:l,sum:f(r),st:r.status,dec:r.dec}))).sort((a,b)=>a.dec<b.dec?1:-1).slice(0,20);
+ const warn=x=>{if(x.k!="leave"||!isLD(x.r.type))return "";const y=String(x.r.from).slice(0,4),t=lstat(x.emp,y);return t.has&&t.g-t.used-n0(x.r.days)<0?' <span class="st bad">잔여 연차 초과</span>':""};
+ return '<div class="stats">'+[["결재 대기",pa.length+"건"],["최근 처리",dn2.length+"건"]].map(x=>'<div class="box stat"><span class="note">'+x[0]+'</span><b>'+x[1]+'</b></div>').join("")+'</div><div class="box"><h3>결재 대기</h3>'+(pa.length?'<div class="tw"><table><tr><th>신청자</th><th>구분</th><th>내용</th><th>신청일</th><th></th></tr>'+pa.map(x=>'<tr><td>'+esc(ename(x.emp))+'</td><td>'+esc(x.label)+'</td><td>'+esc(x.sum)+warn(x)+'</td><td>'+esc(x.date)+'</td><td><button class="btn cta sm" data-ap="'+x.k+':'+x.id+':ok">'+(x.k=="cert"?"발급 승인":"승인")+'</button> <button class="btn sm" data-ap="'+x.k+':'+x.id+':no">반려</button></td></tr>').join("")+'</table></div>':'<div class="empty">대기 중인 결재가 없습니다.</div>')+'</div><div class="box"><h3>최근 처리 내역</h3>'+(dn2.length?'<div class="tw"><table><tr><th>신청자</th><th>구분</th><th>내용</th><th>상태</th><th>처리일시</th><th></th></tr>'+dn2.map(x=>'<tr><td>'+esc(ename(x.emp))+'</td><td>'+esc(x.label)+'</td><td>'+esc(x.sum)+'</td><td><span class="st '+(MVC[x.st]||"pend")+'">'+esc(x.st)+'</span></td><td>'+esc(x.dec)+'</td><td><button class="btn sm" data-ap="'+x.k+':'+x.id+':reset">대기로 되돌리기</button></td></tr>').join("")+'</table></div>':'<div class="empty">처리 내역이 없습니다.</div>')+'</div><p class="note">신청 상태는 이 화면의 승인·반려 버튼으로만 바뀌고, 처리일시는 누른 시각으로 자동 기입됩니다. 직원 화면의 신청 내역, 근태현황, 잔여 연차, 알림에 바로 반영됩니다.</p>'}
 function vAdmin(){
- const s=sub.admin;if(s=="dash")return vDash();
+ const s=sub.admin;if(s=="dash")return vDash();if(s=="appr")return vApprAdmin();
  const c=SC[s],rows=DB[s];
  return '<div class="box"><div class="ch"><h3>'+c.t+' ('+rows.length+'건)</h3><div class="row" style="margin:0"><button class="btn" data-add="'+s+'">행 추가</button><button class="btn sm" data-rst="'+s+'">'+(armed=="r"+s?"정말 되돌리기":"기본값으로 되돌리기")+'</button></div></div><div class="tw"><table><tr>'+c.cols.map(x=>'<th>'+x[1]+'</th>').join("")+'<th></th></tr>'+rows.map((r,i)=>'<tr>'+c.cols.map(x=>'<td>'+cell(s,i,x,r[x[0]])+'</td>').join("")+'<td><button class="btn sm" data-rm="'+s+':'+i+'">'+(armed==s+":"+i?"정말 삭제":"삭제")+'</button></td></tr>').join("")+'</table></div>'+(rows.length?'':'<div class="empty">데이터가 없습니다. 행 추가로 입력하세요.</div>')+'</div><p class="note">'+c.n+'</p>'}
 
@@ -429,6 +445,10 @@ document.addEventListener("click",e=>{
  const c=s=>e.target.closest(s);let b;
  if(!c("#bp")&&!c("#bell"))$("#bp").hidden=true;
  if(c("#bell")){$("#bp").hidden=!$("#bp").hidden;return}
+ if(c("#apb")){tab="admin";sub.admin="appr";editing=null;armed="";render();return}
+ if(b=c("[data-ap]")){const[k,id,a]=b.dataset.ap.split(":"),r=DB[k].find(x=>x.id==id);if(r){if(a=="reset"){r.status="결재 대기";r.dec=""}else{r.status=a=="ok"?(SOK[k]||"승인"):"반려";r.dec=nowS()}save();render()}return}
+ if(b=c("[data-aal]")){const sn=LS("hr_aseen")||[];if(!sn.includes(b.dataset.aal)){sn.push(b.dataset.aal);SV("hr_aseen",sn)}$("#bp").hidden=true;tab="admin";sub.admin="appr";render();return}
+ if(c("[data-areadall]")){SV("hr_aseen",pendAll().map(x=>x.id));render();return}
  if(b=c("[data-t]")){tab=b.dataset.t;sub[tab]=SUBS[tab][0][0];selM=null;selCert=null;selN=null;editing=null;armed="";render()}
  else if(b=c("[data-s]")){sub[tab]=b.dataset.s;editing=null;armed="";render()}
  else if(c("[data-pk]")){pY=$("#py").value;pM=$("#pm").value;selM=pY+"-"+pM;render()}
