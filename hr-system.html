@@ -140,7 +140,7 @@ function DEF(){
  const leave=[{id:uid(),emp:me.id,date:ld,type:"연차",from:ld,to:ld,days:1,why:"개인 사유 (샘플)",status:"승인",dec:ld+" 09:00"}];
  const ot=[{id:uid(),emp:me.id,date:od,wdate:od,type:"연장",from:"18:00",to:"20:00",hours:2,why:"월말 마감 업무 (샘플)",status:"승인",dec:od+" 10:00"}];
  const grant=[{emp:me.id,year:String(T.getFullYear()),days:15}],cert=[];
- const notice=[{id:uid(),title:"[필독] HR 통합 시스템 이용 안내",body:"인사정보, 근태, 휴가·초과근무 신청, 증명서 신청, 연말정산을 한 곳에서 이용할 수 있습니다. 신청 결과는 우측 상단 알림(종 모양)으로 알려 드립니다. (샘플 공지)",date:fmt(T),pin:"Y"},{id:uid(),title:"연차 사용 계획 제출 안내 (샘플)",body:"연말 연차 소진을 위해 사용 계획을 팀장에게 공유해 주세요. 휴가는 근무·증명 메뉴의 휴가 신청에서 신청합니다. (샘플 공지)",date:fmt(back(3)),pin:""}];
+ const notice=[{id:uid(),title:"[필독] HR 통합 시스템 이용 안내",body:"인사정보, 근태, 휴가·초과근무 신청, 증명서 신청, 연말정산을 한 곳에서 이용할 수 있습니다. 신청 결과는 우측 상단 알림(종 모양)으로 알려 드립니다. (샘플 공지)",date:fmt(T),pin:"Y"},{id:uid(),title:"연차 사용 계획 제출 안내 (샘플)",body:"연말 연차 소진을 위해 사용 계획을 팀장에게 공유해 주세요. 휴가는 근태관리·증명서발급 메뉴의 휴가 신청에서 신청합니다. (샘플 공지)",date:fmt(back(3)),pin:""}];
  return{dept,emp,edge,pay,
   hist:[{emp:me.id,date:"2022-03-01",type:"입사",from:"-",to:"인사팀"},{emp:me.id,date:"2024-01-01",type:"부서이동",from:"인사팀",to:"총무팀"}],
   crit:[["업무 성과","목표 달성도, 결과물의 품질",40],["직무 역량","전문 지식, 문제 해결",30],["협업·소통","부서 간 협력, 정보 공유",20],["근무 태도","책임감, 근태",10]].map(([name,desc,weight])=>({name,desc,weight})),
@@ -165,7 +165,7 @@ const grade=s=>s>=90?"S":s>=80?"A":s>=70?"B":"C";
 const awards=m=>(m.awards||"").split(";").map(s=>s.trim()).filter(Boolean).map(s=>{const i=s.indexOf(":");return i<0?["",s]:[s.slice(0,i),s.slice(i+1)]});
 
 /* ===== 상태·공통 ===== */
-const TABS=[["info","인사정보"],["dept","부서별 업무·연관"],["eval","인사평가·발령"],["work","근무·증명"],["ye","연말정산"],["board","건의·문의"],["appr","결재함"],["notice","공지사항"],["admin","관리자"]];
+const TABS=[["info","인사정보"],["dept","부서별 업무·연관"],["eval","인사평가·발령"],["work","근태관리·증명서발급"],["ye","연말정산"],["board","건의·문의"],["appr","결재함"],["notice","공지사항"],["admin","관리자"]];
 const SUBS={info:[["me","개인정보"],["pay","급여"],["att","근태현황"],["hist","부서이동 이력"],["move","부서이동 신청"],["edu","교육 신청"]],dept:[["net","연관도"],["man","업무 매뉴얼"]],eval:[["crit","평가 항목"],["res","내 평가 결과"],["appt","인사발령 결과"]],work:[["leave","휴가 신청"],["ot","초과근무 신청"],["cert","증명서 신청"],["issue","증명서 발급"]],appr:[["all","전체"],["pend","결재 대기"],["done","승인·발급"],["rej","반려"]],notice:[["list","공지 목록"]],ye:[["apply","연말정산 신청"],["prog","연말정산 진행"],["res","연말정산 결과"]],board:[["건의사항","건의사항"],["문의사항","문의사항"],["칭찬합니다","칭찬합니다"]],
  admin:[["dash","현황"],["emp","직원"],["dept","부서"],["edge","연관도"],["pay","급여"],["hist","이동 이력"],["crit","평가 항목"],["res","평가 결과"],["appt","발령"],["move","이동 신청 결재"],["board","건의·문의 답변"],["edu","교육 신청 결재"],["ye","연말정산 진행"],["yer","연말정산 결과"],["leave","휴가 결재"],["grant","연차 부여"],["att","근태 기록"],["ot","초과근무 결재"],["cert","증명서 결재"],["notice","공지사항"],["manual","매뉴얼"]]};
 let tab="info",sub={info:"me",dept:"net",eval:"crit",ye:"apply",work:"leave",appr:"all",notice:"list",board:"건의사항",admin:"dash"},selM=null,selD=null,editing=null,sim=null,POSMEM={},armed="",pY="",pM="01",attY="",attMo="",selCert=null,selN=null;
