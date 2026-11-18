@@ -65,6 +65,8 @@ def main():
     write(rows)
     last = rows[-1] if rows else None
     print(f"새로 {added}회 추가, 총 {len(rows)}회" + (f" (최신 {last['r']}회 {last['d']})" if last else ""))
+    if err:
+        sys.exit(1)  # 사이트 접속 실패 → 자동 실행에서 실패로 표시되어 알림이 감
 
 
 if __name__ == "__main__":
