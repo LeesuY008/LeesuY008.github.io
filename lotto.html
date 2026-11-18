@@ -847,15 +847,25 @@ function addHistory(arr) {
 const PAGE_SIZE = 10, SEL_MAX = 5;
 let recentPage = 1;
 const selRounds = new Set();   // 체크한 회차 (history 인덱스)
+// 새로 선택할 수 있는 개수 = 5 - 구매 목록에 이미 담긴 개수
+const selLimit = () => Math.max(0, Math.min(SEL_MAX, CART_MAX - cart.length));
 function updateSelBtn() {
-  document.getElementById('selCount').textContent = `(${selRounds.size}/${SEL_MAX})`;
-  document.getElementById('selToCart').disabled = !selRounds.size;
+  const lim = selLimit(), btn = document.getElementById('selToCart');
+  document.getElementById('selCount').textContent = lim ? `(${selRounds.size}/${lim})` : '(목록 가득 참)';
+  btn.disabled = !selRounds.size;
+  btn.title = `구매 목록 ${cart.length}/${CART_MAX}게임 · 새로 ${lim}개까지 선택 가능`;
 }
 document.getElementById('recent').addEventListener('change', e => {
   if (!e.target.classList.contains('rchk')) return;
   const idx = +e.target.dataset.idx;
   if (e.target.checked) {
-    if (selRounds.size >= SEL_MAX) { e.target.checked = false; return toast(`최대 ${SEL_MAX}개까지 선택할 수 있어요.`); }
+    const lim = selLimit();
+    if (selRounds.size >= lim) {
+      e.target.checked = false;
+      return toast(lim
+        ? `구매 목록에 ${cart.length}개가 담겨 있어요.\n${lim}개까지만 더 선택할 수 있어요.`
+        : `구매 목록이 가득 찼어요 (${CART_MAX}/${CART_MAX}).\n구매 탭에서 번호를 지운 뒤 선택해 주세요.`);
+    }
     selRounds.add(idx);
   } else selRounds.delete(idx);
   renderRecent();
@@ -887,7 +897,10 @@ function renderRecent() {
   // 최신 회차가 1페이지 맨 위
   const hi = total - (recentPage - 1) * PAGE_SIZE, lo = Math.max(0, hi - PAGE_SIZE);
   document.getElementById('recentInfo').textContent = `${hi}~${lo + 1}회 · 총 ${total.toLocaleString()}회`;
-  const full = selRounds.size >= SEL_MAX;
+  // 구매 목록이 바뀌어 한도가 줄었으면 나중에 고른 것부터 선택 해제
+  const lim = selLimit();
+  while (selRounds.size > lim) selRounds.delete([...selRounds].pop());
+  const full = selRounds.size >= lim;
   el.innerHTML = history.slice(lo, hi).reverse().map((d, i) => {
     const idx = hi - 1 - i, on = selRounds.has(idx);
     return `<label class="set pick-row ${on ? 'on' : ''}">
@@ -1297,6 +1310,7 @@ window.addCart = (str, src) => {
   toast(`🛒 구매 목록에 담았어요 (${cart.length}/${CART_MAX})`);
 };
 function renderCart() {
+  if (typeof selRounds !== 'undefined') renderRecent();
   const badge = document.getElementById('cartBadge');
   badge.textContent = cart.length || ''; badge.style.display = cart.length ? '' : 'none';
   document.getElementById('cartInfo').textContent = `${cart.length}/${CART_MAX}게임 · ${(cart.length * 1000).toLocaleString()}원`;
