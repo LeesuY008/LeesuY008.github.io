@@ -69,6 +69,11 @@
   .set { display: flex; align-items: center; gap: 8px; padding: 10px 0; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
   .set .lbl { width: 22px; font-weight: 700; color: var(--muted); }
   .rank-table td:nth-child(n+2), .rank-table th:nth-child(n+2) { text-align: right; }
+  a.btn { text-decoration: none; display: inline-block; }
+  .badge { background: #e03131; color: #fff; border-radius: 999px; font-size: 11px; padding: 1px 6px; margin-left: 2px; }
+  .steps { margin: 0; padding-left: 20px; line-height: 1.9; font-size: 14px; }
+  .toast { position: fixed; left: 50%; bottom: 28px; transform: translate(-50%, 20px); background: #1d1f24; color: #fff; padding: 11px 18px; border-radius: 12px; font-size: 14px; opacity: 0; pointer-events: none; transition: .25s; z-index: 80; max-width: calc(100% - 32px); }
+  .toast.show { opacity: 1; transform: translate(-50%, 0); }
   .note { font-size: 12px; color: var(--muted); margin-top: 10px; line-height: 1.6; }
   .chips { display: flex; gap: 6px; flex-wrap: wrap; width: 100%; padding-left: 30px; }
   .chip { font-size: 12px; background: var(--accent-soft); color: var(--text); padding: 3px 8px; border-radius: 999px; }
@@ -110,6 +115,7 @@
     <button class="tab" data-tab="stats">내 기록 통계</button>
     <button class="tab" data-tab="predict">당첨번호 분석·예상</button>
     <button class="tab" data-tab="check">내 번호 측정</button>
+    <button class="tab" data-tab="buy">🛒 구매 <span class="badge" id="cartBadge"></span></button>
   </div>
 
   <!-- 추첨 -->
@@ -123,6 +129,7 @@
           <div class="tray" id="tray"></div>
           <div class="row" style="margin-top:18px">
             <button class="btn" id="drawBtn">추첨 시작</button>
+            <button class="btn ghost" id="cartFromDraw" disabled>🛒 담기</button>
             <select id="speed">
               <option value="1">보통 속도</option>
               <option value="0.45">빠르게</option>
@@ -249,6 +256,7 @@
       <div class="row" style="margin-top:12px">
         <button class="btn ghost" id="autoPick">자동 선택</button>
         <button class="btn ghost" id="resetPick">초기화</button>
+        <button class="btn" id="pickToCart">🛒 구매 목록에 담기</button>
       </div>
     </div>
     <div class="card">
@@ -265,7 +273,42 @@
       <div id="checkOut" style="margin-top:16px"></div>
     </div>
   </section>
+
+  <!-- 구매 -->
+  <section class="panel" id="p-buy">
+    <div class="card">
+      <div class="row" style="justify-content:space-between; margin-bottom:6px">
+        <h2 style="margin:0">구매 목록 <span class="muted" id="cartInfo"></span></h2>
+        <div class="row">
+          <button class="btn ghost" id="cartCopy">번호 복사</button>
+          <button class="btn danger" id="cartClear">비우기</button>
+        </div>
+      </div>
+      <p class="muted" style="margin:0 0 8px">추첨·예상 번호·내 번호 측정 탭의 '🛒 담기' 버튼으로 최대 5게임까지 모을 수 있어요.</p>
+      <div id="cartList"></div>
+      <div class="row" style="margin-top:16px">
+        <a class="btn" href="https://el.dhlottery.co.kr/game/TotalGame.jsp?LottoId=LO40" target="_blank" rel="noopener" id="buyLink">동행복권에서 구매하기 ↗</a>
+        <span class="muted">공식 판매처로 이동합니다 (로그인 필요)</span>
+      </div>
+    </div>
+    <div class="card">
+      <h2>구매 방법</h2>
+      <ol class="steps">
+        <li>위의 <b>번호 복사</b>를 눌러 번호를 복사해 두세요.</li>
+        <li><b>동행복권에서 구매하기</b>를 눌러 로그인합니다. 처음이라면 회원가입과 예치금 충전이 필요해요.</li>
+        <li>로또 6/45 구매 화면에서 게임(A~E)마다 구매 목록의 번호 6개를 직접 선택하고 <b>확인</b>을 눌러 담아요.</li>
+        <li>담긴 번호가 맞는지 확인한 뒤 <b>구매하기</b>를 눌러 결제를 마칩니다.</li>
+      </ol>
+      <p class="note">
+        · 로또 온라인 구매는 동행복권 공식 사이트에서만 가능하며, 이 페이지는 번호를 정리해 주고 구매 페이지로 연결만 해요. 결제나 로그인 정보는 다루지 않습니다.<br>
+        · 만 19세 이상만 구매할 수 있고, 온라인은 1인당 회차별 5,000원(5게임)까지 살 수 있어요.<br>
+        · 토요일 오후 8시에 판매가 마감되고 같은 날 저녁에 추첨합니다. 자세한 규정은 동행복권 공식 안내를 확인하세요.<br>
+        · 복권은 재미로, 감당할 수 있는 금액만 구매하세요.
+      </p>
+    </div>
+  </section>
 </div>
+<div class="toast" id="toast"></div>
 
 <script src="lotto_data.js"></script>
 <script>
@@ -680,6 +723,7 @@ function setBusy(b) {
   drawing = b;
   document.getElementById('drawBtn').disabled = b;
   document.querySelectorAll('[data-bulk]').forEach(x => x.disabled = b);
+  document.getElementById('cartFromDraw').disabled = b || !history.length;
 }
 
 document.getElementById('drawBtn').onclick = async function () {
@@ -731,6 +775,7 @@ document.querySelectorAll('[data-bulk]').forEach(b => b.onclick = () => {
 });
 function addHistory(arr) {
   history.push(...arr);
+  document.getElementById('cartFromDraw').disabled = false;
   if (history.length > MAX_HISTORY) history = history.slice(-MAX_HISTORY);
   save();
   renderRecent();
@@ -976,6 +1021,7 @@ document.getElementById('predictBtn').onclick = () => {
         return `<div class="set"><span class="lbl">${String.fromCharCode(65 + i)}</span>
           ${s.map(n => `<span class="tagball">${ballHTML(n, true)}<span class="t">${tagsFor(n, A)}</span></span>`).join('')}
           <button class="btn ghost small" onclick="usePick('${s.join(',')}')">측정</button>
+          <button class="btn ghost small" onclick="addCart('${s.join(',')}','예상 번호 ${String.fromCharCode(65 + i)}')">🛒 담기</button>
           <div class="chips">
             <span class="chip">평균 추정확률 ${pct(prob)}</span>
             <span class="chip">홀짝 ${oddEven(s)} (과거 ${share(A.oddD, oddCnt(s))})</span>
@@ -1057,11 +1103,61 @@ document.getElementById('simBtn').onclick = () => {
   renderResult(counts, n, `${n.toLocaleString()}회 가상 추첨`, `소요 시간 ${(performance.now() - t0).toFixed(0)}ms · 시뮬레이션은 기록에 저장되지 않습니다.`);
 };
 
+/* =========================================================
+   구매 목록 (공식 판매처 연결)
+   ========================================================= */
+const CART_KEY = 'lotto_cart_v1', CART_MAX = 5;
+let cart = (() => { try { return JSON.parse(localStorage.getItem(CART_KEY)) || []; } catch { return []; } })();
+const saveCart = () => { try { localStorage.setItem(CART_KEY, JSON.stringify(cart)); } catch {} };
+let toastTimer;
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), 2200);
+}
+window.addCart = (str, src) => {
+  const nums = (Array.isArray(str) ? str : String(str).split(',').map(Number)).slice().sort((a, b) => a - b);
+  if (nums.length !== 6 || new Set(nums).size !== 6) return toast('번호 6개가 필요해요.');
+  if (cart.some(c => c.nums.join() === nums.join())) return toast('이미 담긴 번호예요.');
+  if (cart.length >= CART_MAX) return toast(`온라인은 회차당 ${CART_MAX}게임까지만 살 수 있어요.`);
+  cart.push({ nums, src }); saveCart(); renderCart();
+  toast(`🛒 구매 목록에 담았어요 (${cart.length}/${CART_MAX})`);
+};
+function renderCart() {
+  const badge = document.getElementById('cartBadge');
+  badge.textContent = cart.length || ''; badge.style.display = cart.length ? '' : 'none';
+  document.getElementById('cartInfo').textContent = `${cart.length}/${CART_MAX}게임 · ${(cart.length * 1000).toLocaleString()}원`;
+  document.getElementById('cartList').innerHTML = cart.length
+    ? cart.map((c, i) => `<div class="set"><span class="lbl">${String.fromCharCode(65 + i)}</span>
+        ${c.nums.map(n => ballHTML(n, true)).join('')}<span class="muted">${c.src || ''}</span>
+        <button class="btn ghost small" style="margin-left:auto" onclick="removeCart(${i})">삭제</button></div>`).join('')
+    : '<p class="muted">아직 담은 번호가 없어요.</p>';
+}
+window.removeCart = i => { cart.splice(i, 1); saveCart(); renderCart(); };
+document.getElementById('cartClear').onclick = () => { if (cart.length && confirm('구매 목록을 비울까요?')) { cart = []; saveCart(); renderCart(); } };
+document.getElementById('cartCopy').onclick = async () => {
+  if (!cart.length) return toast('담은 번호가 없어요.');
+  const text = cart.map((c, i) => `${String.fromCharCode(65 + i)}: ${c.nums.map(n => String(n).padStart(2, '0')).join(' ')}`).join('\n');
+  try { await navigator.clipboard.writeText(text); }
+  catch { const ta = document.createElement('textarea'); ta.value = text; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove(); }
+  toast('번호를 복사했어요. 구매 화면에서 같은 번호를 선택하세요.');
+};
+document.getElementById('cartFromDraw').onclick = () => {
+  const d = history[history.length - 1];
+  if (d) addCart(d.nums, `추첨 ${history.length}회차`);
+};
+document.getElementById('pickToCart').onclick = () => {
+  if (picked.size !== 6) return toast('번호 6개를 골라주세요.');
+  addCart([...picked], '내가 고른 번호');
+};
+
 /* ---------- 시작 ---------- */
 resetBalls();
 emptyTray();
 renderRecent();
 renderPicker();
+renderCart();
+document.getElementById('cartFromDraw').disabled = !history.length;
 requestAnimationFrame(loop);
 </script>
 </body>
