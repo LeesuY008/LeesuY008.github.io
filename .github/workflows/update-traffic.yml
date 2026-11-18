@@ -1,0 +1,52 @@
+name: 서울 실시간 교통 정보 업데이트
+
+on:
+  schedule:
+    # 약 10분마다 (매시 4, 14, 24, 34, 44, 54분 · 정각을 피해 지연을 줄임)
+    # GitHub 사정에 따라 몇 분~수십 분 늦게 실행될 수 있음
+    - cron: "4-59/10 * * * *"
+  workflow_dispatch:   # Actions 탭에서 수동 실행
+
+permissions:
+  contents: write
+  pages: write
+
+concurrency:          # 이전 실행이 끝나기 전에 겹쳐 실행되지 않도록
+  group: update-traffic
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: 서울시 API에서 실시간 속도·교통량 받기
+        run: python3 scripts/update_traffic_live.py data/seoul_links.json data/traffic_live.json
+        env:
+          SEOUL_API_KEY: ${{ secrets.SEOUL_API_KEY }}
+
+      - name: 커밋 후 사이트 반영
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if [ ! -f data/traffic_live.json ]; then
+            echo "수집 결과 파일 없음 (인증키 미등록 등)"
+            exit 0
+          fi
+          git add data/traffic_live.json
+          if git diff --cached --quiet; then
+            echo "바뀐 내용 없음"
+            exit 0
+          fi
+          git commit -m "실시간 교통 정보 자동 업데이트"
+          git pull --rebase origin main
+          git push
+          gh api -X POST "repos/${{ github.repository }}/pages/builds" || true
+        env:
+          GH_TOKEN: ${{ github.token }}

@@ -62,6 +62,12 @@
   .leaflet-tooltip.ptlabel{background:rgba(255,255,255,.88);border:0;box-shadow:none;padding:1px 4px;font-size:11px;color:#1f1f1d;font-weight:600}
   .leaflet-tooltip.ptlabel::before{display:none}
   .gulabel{background:none;border:0}
+  .ctl.off{opacity:.4;pointer-events:none}
+  .livebar{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;margin:10px 20px 0;padding:8px 12px;border:1px solid var(--line);border-radius:8px;background:var(--surface);font-size:13px}
+  .livebar .dot{width:9px;height:9px;border-radius:50%;display:inline-block;background:#8a877f;margin-right:4px}
+  .livebar .dot.on{background:#1f9d55;box-shadow:0 0 0 3px rgba(31,157,85,.2)}
+  .spdleg{display:inline-flex;gap:10px;align-items:center}
+  .spdleg i{display:inline-block;width:18px;height:4px;border-radius:2px;margin-right:3px;vertical-align:middle}
   .gulabel span{display:inline-block;transform:translate(-50%,-50%);white-space:nowrap;font-size:var(--gu-size,14px);font-weight:700;color:#3d3b37;
     text-shadow:0 0 3px #fff,0 0 3px #fff,0 0 3px #fff,0 0 3px #fff;letter-spacing:.02em}
   .tt{position:fixed;pointer-events:none;background:var(--surface);color:var(--ink);border:1px solid var(--line);box-shadow:0 2px 8px rgba(0,0,0,.15);border-radius:6px;padding:6px 8px;font-size:12px;display:none;z-index:9999;white-space:nowrap}
@@ -81,8 +87,17 @@
 </header>
 <div class="notice" id="notice"></div>
 
+<div class="livebar" id="livebar">
+  <span><span class="dot" id="liveDot"></span><b id="liveStatus">실시간 정보 확인 중…</b></span>
+  <span class="chips" role="group" aria-label="데이터 선택">
+    <button class="chip" id="srcLive" aria-pressed="false">실시간 교통량</button>
+    <button class="chip" id="srcAvg" aria-pressed="true">10월 평균 (요일·시각 선택)</button>
+  </span>
+  <label><input type="checkbox" id="spdToggle" checked> <b>실시간 도로 속도</b></label>
+  <span class="spdleg"><span><i style="background:#d03b3b"></i>정체 ≤15</span><span><i style="background:#e8a33d"></i>서행 15~25</span><span><i style="background:#2f9e5a"></i>원활 25↑ km/h</span></span>
+</div>
 <section class="controls" aria-label="설정">
-  <div class="ctl">
+  <div class="ctl timectl">
     <label class="cap">요일 (여러 개 고르면 평균)</label>
     <div class="chips" id="dayChips"></div>
     <div class="chips">
@@ -91,7 +106,7 @@
       <button class="chip small" data-preset="all">전체</button>
     </div>
   </div>
-  <div class="ctl">
+  <div class="ctl timectl">
     <label class="cap" for="timeRange">시각 (00:00 ~ 24:00, 5분 단위)</label>
     <div class="timebox">
       <span class="bigtime" id="timeLabel">08:00</span>
@@ -109,7 +124,7 @@
     <input type="range" id="timeRange" min="0" max="1440" step="5" value="480">
     <div class="ticks"><span>00</span><span>03</span><span>06</span><span>09</span><span>12</span><span>15</span><span>18</span><span>21</span><span>24</span></div>
   </div>
-  <div class="ctl">
+  <div class="ctl timectl">
     <label class="cap">값 계산 방식</label>
     <div class="chips">
       <button class="chip" id="modeBucket" aria-pressed="true" title="선택 시각이 속한 1시간 구간의 원자료 값">1시간 구간값</button>
@@ -177,7 +192,7 @@ const DIRNAME = {t:'양방향 합계', i:'유입(도심 방향)', o:'유출(외�
 
 const points = DATA.points.map((p,k)=>({id:k, code:p.c, name:p.n, group:p.g, lat:p.la, lon:p.lo, lat2:p.la2, lon2:p.lo2, addr:p.ai, wayI:p.wi, wayO:p.wo, t:p.t, i:p.i, o:p.o}));
 function posOf(p){ if(state.dir==='i') return [p.lat,p.lon]; if(state.dir==='o') return [p.lat2,p.lon2]; return [(p.lat+p.lat2)/2,(p.lon+p.lon2)/2]; }
-const state = {days:new Set([0,1,2,3,4]), minute:480, mode:'bucket', dir:'t', groups:new Set(), selected:0, playing:null};
+const state = {source:'avg', days:new Set([0,1,2,3,4]), minute:480, mode:'bucket', dir:'t', groups:new Set(), selected:0, playing:null};
 state.selected = (points.find(p=>p.code==='C-01')||points[0]).id;
 const vmaxBy = {};
 
@@ -206,7 +221,17 @@ function hourVal(p,h){
   state.days.forEach(d=>{const v=g[d][h]; if(v!=null){s+=v;c++;}});
   return c?s/c:null;
 }
+// ---- 실시간 자료 ----
+let LIVE=null, LINKS=null, speedLayer=null, speedLines=[];
+// 교통량 API의 IO_TYPE 코드: 1=유입, 2=유출로 가정 (첫 수집 결과로 확인 필요)
+function liveVal(p){
+  const r=LIVE&&LIVE.vol&&LIVE.vol[p.code]; if(!r) return null;
+  const io=r.io||{}, vals=Object.values(io);
+  if(state.dir==='t') return vals.length?vals.reduce((a,b)=>a+b,0):null;
+  const k=state.dir==='i'?'1':'2'; return io[k]!=null?io[k]:null;
+}
 function valueAt(p,minute){
+  if(state.source==='live') return liveVal(p);
   if(state.mode==='bucket') return hourVal(p, Math.min(23,Math.floor(minute/60)));
   const t=Math.min(23,Math.max(0,minute/60-0.5)), h0=Math.floor(t), h1=Math.min(23,h0+1), f=t-h0;
   const a=hourVal(p,h0), b=hourVal(p,h1);
@@ -327,8 +352,13 @@ function dayLabel(){
 function updatePanels(){
   const vis=points.filter(p=>state.groups.has(p.group)).map(p=>({p,v:valueAt(p,state.minute)}));
   document.getElementById('totalVal').textContent=fmt(vis.reduce((s,o)=>s+(o.v||0),0));
-  document.getElementById('selLabel').textContent=dayLabel()+' '+hhmm(state.minute);
-  document.getElementById('mapTitle').textContent=`지도 — ${dayLabel()} ${hhmm(state.minute)} · ${DIRNAME[state.dir]} ${state.mode==='bucket'?'(1시간 구간값)':'(보간 추정값)'}`;
+  if(state.source==='live'){
+    document.getElementById('selLabel').textContent='실시간 · '+liveHourLabel();
+    document.getElementById('mapTitle').textContent=`지도 — 실시간 교통량 (${liveHourLabel()}) · ${DIRNAME[state.dir]}`;
+  }else{
+    document.getElementById('selLabel').textContent=dayLabel()+' '+hhmm(state.minute);
+    document.getElementById('mapTitle').textContent=`지도 — ${dayLabel()} ${hhmm(state.minute)} · ${DIRNAME[state.dir]} ${state.mode==='bucket'?'(1시간 구간값)':'(보간 추정값)'}`;
+  }
   document.getElementById('legMax').textContent=fmt(vmax())+'+';
   const top=vis.filter(o=>o.v!=null).sort((a,b)=>b.v-a.v).slice(0,10), mx=top.length?top[0].v:1;
   document.getElementById('rank').innerHTML=top.map((o,i)=>
@@ -344,10 +374,11 @@ function updatePanels(){
 /* 24시간 차트 */
 function drawDetail(){
   const svg=document.getElementById('detailChart'); const p=points[state.selected];
-  document.getElementById('detailTitle').textContent=`${p.name} (${p.code}) · ${dayLabel()} · ${DIRNAME[state.dir]}`;
+  document.getElementById('detailTitle').textContent=`${p.name} (${p.code}) · ${dayLabel()} · ${DIRNAME[state.dir]}`+(state.source==='live'?' · 선: 10월 평균, ◆: 실시간':'');
   const W=svg.clientWidth||320,H=180,l=44,r=10,t=10,b=24;
   const vals=[]; for(let h=0;h<24;h++) vals.push(hourVal(p,h));
-  const ymax=Math.max(1,...vals.filter(v=>v!=null))*1.1;
+  const lv=state.source==='live'?valueAt(p,state.minute):null;
+  const ymax=Math.max(1,lv||0,...vals.filter(v=>v!=null))*1.1;
   const X=m=>l+(m/1440)*(W-l-r), Y=v=>t+(1-v/ymax)*(H-t-b);
   let s='';
   for(let i=0;i<=4;i++){const v=ymax*i/4;s+=`<line x1="${l}" x2="${W-r}" y1="${Y(v)}" y2="${Y(v)}" stroke="var(--line)"/><text x="${l-6}" y="${Y(v)+4}" text-anchor="end" font-size="10" fill="var(--muted)">${fmt(v)}</text>`;}
@@ -358,7 +389,10 @@ function drawDetail(){
   s+=`<path d="${path}" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linejoin="round"/>`;
   const cv=valueAt(p,state.minute);
   s+=`<line x1="${X(state.minute)}" x2="${X(state.minute)}" y1="${t}" y2="${H-b}" stroke="var(--ink)" stroke-dasharray="3 3"/>`;
-  if(cv!=null) s+=`<circle cx="${X(state.minute)}" cy="${Y(cv)}" r="4.5" fill="var(--accent)" stroke="var(--surface)" stroke-width="2"/>`;
+  if(cv!=null && state.source==='live'){
+    s+=`<rect x="${X(state.minute)-5}" y="${Y(Math.min(cv,ymax))-5}" width="10" height="10" transform="rotate(45 ${X(state.minute)} ${Y(Math.min(cv,ymax))})" fill="var(--ink)" stroke="var(--surface)" stroke-width="2"/>`+
+       `<text x="${X(state.minute)+9}" y="${Math.max(t+10,Y(Math.min(cv,ymax))-8)}" font-size="11" fill="var(--ink)" font-weight="700">실시간 ${fmt(cv)}</text>`;
+  } else if(cv!=null) s+=`<circle cx="${X(state.minute)}" cy="${Y(cv)}" r="4.5" fill="var(--accent)" stroke="var(--surface)" stroke-width="2"/>`;
   s+=`<g id="hov" style="display:none"><line id="hovL" y1="${t}" y2="${H-b}" stroke="var(--muted)"/><circle id="hovC" r="4" fill="var(--surface)" stroke="var(--accent)" stroke-width="2"/></g><rect x="${l}" y="${t}" width="${W-l-r}" height="${H-t-b}" fill="transparent" id="hit" style="cursor:pointer"/>`;
   svg.setAttribute('viewBox',`0 0 ${W} ${H}`); svg.innerHTML=s;
   const hit=svg.querySelector('#hit'),hov=svg.querySelector('#hov');
@@ -427,7 +461,75 @@ function nowKST(){
 }
 function goNow(){ const n=nowKST(); if(n.dow>=0) state.days=new Set([n.dow]); syncDays(); setMinute(n.minute); }
 document.getElementById('nowBtn').addEventListener('click',goNow);
-computeMax(); initMap(); goNow();
+function liveHourLabel(){
+  if(!LIVE) return '-';
+  const hs=Object.values(LIVE.vol||{}).map(r=>r.hh); if(!hs.length) return '교통량 자료 없음';
+  const c={}; hs.forEach(h=>c[h]=(c[h]||0)+1); const h=+Object.keys(c).sort((a,b)=>c[b]-c[a])[0];
+  return String(h).padStart(2,'0')+'시 자료';
+}
+function liveAgeMin(){ return LIVE? Math.round((Date.now()-new Date(LIVE.updated).getTime())/60000) : null; }
+function setSource(src){
+  if(src==='live' && !(LIVE && LIVE.vol_ok>0)) src='avg';
+  state.source=src;
+  document.getElementById('srcLive').setAttribute('aria-pressed',src==='live');
+  document.getElementById('srcAvg').setAttribute('aria-pressed',src==='avg');
+  document.querySelectorAll('.timectl').forEach(c=>c.classList.toggle('off',src==='live'));
+  if(src==='live'){
+    if(state.playing){clearInterval(state.playing);state.playing=null;document.getElementById('play').textContent='▶ 재생';}
+    const n=nowKST(); if(n.dow>=0) state.days=new Set([n.dow]); syncDays();
+    const hs=Object.values(LIVE.vol).map(r=>r.hh); const c={}; hs.forEach(h=>c[h]=(c[h]||0)+1);
+    const h=+Object.keys(c).sort((a,b)=>c[b]-c[a])[0];
+    state.minute=h*60+30; range.value=state.minute; document.getElementById('timeLabel').textContent=hhmm(state.minute);
+    state.mode='bucket';
+  }
+  update();
+}
+document.getElementById('srcLive').addEventListener('click',()=>setSource('live'));
+document.getElementById('srcAvg').addEventListener('click',()=>{ setSource('avg'); goNow(); });
+
+function spdColor(v){ return v==null?'#9e9b94':(v<=15?'#d03b3b':(v<=25?'#e8a33d':'#2f9e5a')); }
+function spdWeight(){ const z=map?map.getZoom():11; return z<=11?1.2:(z<=13?2:(z<=15?3.5:5)); }
+function drawSpeed(){
+  if(!useLeaflet||!map||!LINKS||!LIVE) return;
+  if(!speedLayer){
+    map.createPane('speed'); map.getPane('speed').style.zIndex=380;
+    const rend=L.canvas({pane:'speed',tolerance:4});
+    speedLayer=L.layerGroup();
+    LINKS.ids.forEach((id,i)=>{
+      const c=LINKS.c[i], ll=[]; for(let k=0;k<c.length;k+=2) ll.push([c[k],c[k+1]]);
+      const line=L.polyline(ll,{renderer:rend,pane:'speed',weight:spdWeight(),opacity:0.9,lineCap:'round'});
+      line.on('mousemove',e=>{const v=LIVE.speed[i];showTT(`도로 구간(링크) ${id}<br><b>${v==null?'속도 자료 없음':v+' km/h'}</b> · ${v==null?'':(v<=15?'정체':v<=25?'서행':'원활')}<br><span style="color:var(--muted)">${LIVE.updated.slice(11,16)} 수집</span>`,e.originalEvent.clientX,e.originalEvent.clientY);});
+      line.on('mouseout',hideTT);
+      speedLines.push(line); speedLayer.addLayer(line);
+    });
+    map.on('zoomend',()=>speedLines.forEach(l=>l.setStyle({weight:spdWeight()})));
+    document.getElementById('spdToggle').addEventListener('change',e=>{ e.target.checked?speedLayer.addTo(map):speedLayer.remove(); });
+  }
+  speedLines.forEach((l,i)=>l.setStyle({color:spdColor(LIVE.speed[i])}));
+  if(document.getElementById('spdToggle').checked && !map.hasLayer(speedLayer)) speedLayer.addTo(map);
+}
+function renderLiveStatus(){
+  const st=document.getElementById('liveStatus'), dot=document.getElementById('liveDot');
+  if(!LIVE){ st.textContent='실시간 정보를 불러오지 못했습니다 — 10월 평균으로 표시 중'; dot.classList.remove('on');
+    document.getElementById('srcLive').disabled=true; document.getElementById('spdToggle').disabled=true; return; }
+  const age=liveAgeMin(), t=LIVE.updated.slice(5,16).replace('T',' ');
+  dot.classList.toggle('on', age<=30);
+  st.textContent=`실시간 업데이트 ${t} (${age}분 전) · 속도 ${LIVE.speed_ok.toLocaleString()}개 구간 · 교통량 ${LIVE.vol_ok}/139 지점`+(age>60?' ⚠️ 오래된 자료':'');
+  document.getElementById('srcLive').disabled=!(LIVE.vol_ok>0);
+}
+async function loadLive(first){
+  try{
+    const r=await fetch('data/traffic_live.json?t='+Date.now(),{cache:'no-store'}); if(!r.ok) throw new Error(r.status);
+    LIVE=await r.json();
+    if(!LINKS){ const r2=await fetch('data/seoul_links.json'); if(r2.ok) LINKS=await r2.json(); }
+  }catch(e){ if(first) LIVE=null; }
+  renderLiveStatus(); drawSpeed();
+  if(first && LIVE && LIVE.vol_ok>0 && liveAgeMin()<=180) setSource('live');
+  else if(state.source==='live') setSource('live');
+}
+
+computeMax(); initMap(); goNow(); loadLive(true);
+setInterval(()=>loadLive(false), 2*60*1000);  // 2분마다 새 자료 확인
 })();
 </script>
 </body>
