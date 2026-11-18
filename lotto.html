@@ -64,7 +64,9 @@
   .fcell.top { border-color: var(--accent); }
   .picker { display: grid; grid-template-columns: repeat(9, 1fr); gap: 6px; max-width: 460px; }
   .pk { aspect-ratio: 1; border: 1px solid var(--line); border-radius: 50%; background: var(--card); color: var(--text); cursor: pointer; font-weight: 700; font-size: 14px; }
-  .pk.on { color: #fff; border-color: transparent; }
+  .pk.on { color: #fff; border-color: transparent; text-shadow: 0 1px 2px rgba(0,0,0,.4);
+    background: radial-gradient(circle at 32% 26%, rgba(255,255,255,.85) 0, rgba(255,255,255,0) 30%),
+                radial-gradient(circle at 40% 35%, var(--c) 40%, color-mix(in srgb, var(--c) 62%, #000) 100%); }
   select, input[type=number] { padding: 9px 10px; border-radius: 10px; border: 1px solid var(--line); background: var(--card); color: var(--text); font-size: 14px; }
   .set { display: flex; align-items: center; gap: 8px; padding: 10px 0; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
   .set .lbl { width: 22px; font-weight: 700; color: var(--muted); }
@@ -94,6 +96,13 @@
   .pick-row input { width: 18px; height: 18px; accent-color: var(--accent); margin: 0 2px 0 0; cursor: pointer; }
   .pick-row input:disabled { cursor: not-allowed; }
   .pick-row:has(input:disabled) { opacity: .55; cursor: not-allowed; }
+  .pick-layout { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 24px; align-items: start; }
+  @media (max-width: 760px) { .pick-layout { grid-template-columns: 1fr; } }
+  .saved-box { background: var(--accent-soft); border-radius: 14px; padding: 14px; max-height: 520px; overflow: auto; }
+  .saved-box h3 { margin: 0 0 10px; font-size: 15px; color: var(--text); }
+  .saved-item { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 10px; margin-bottom: 8px; }
+  .saved-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; font-size: 14px; }
+  .saved-actions { margin-top: 8px; gap: 6px; }
   .pager { display: flex; gap: 6px; align-items: center; justify-content: center; flex-wrap: wrap; margin-top: 14px; }
   .pg { min-width: 34px; height: 34px; padding: 0 8px; border-radius: 9px; border: 1px solid var(--line); background: var(--card); color: var(--text); cursor: pointer; font-size: 14px; }
   .pg[aria-current="page"] { background: var(--accent); color: #fff; border-color: var(--accent); font-weight: 700; }
@@ -291,12 +300,21 @@
   <!-- 측정 -->
   <section class="panel" id="p-check">
     <div class="card">
-      <h2>내 번호 고르기 <span class="muted" id="pickCount">(0/6)</span></h2>
-      <div class="picker" id="picker"></div>
-      <div class="row" style="margin-top:12px">
-        <button class="btn ghost" id="autoPick">자동 선택</button>
-        <button class="btn ghost" id="resetPick">초기화</button>
-        <button class="btn" id="pickToCart">🛒 구매 목록에 담기</button>
+      <div class="pick-layout">
+        <div>
+          <h2>내 번호 고르기 <span class="muted" id="pickCount">(0/6)</span></h2>
+          <div class="picker" id="picker"></div>
+          <div class="row" style="margin-top:12px">
+            <button class="btn ghost" id="autoPick">자동 선택</button>
+            <button class="btn ghost" id="resetPick">초기화</button>
+            <button class="btn ghost" id="savePick">⭐ 저장</button>
+            <button class="btn" id="pickToCart">🛒 구매 목록에 담기</button>
+          </div>
+        </div>
+        <aside class="saved-box">
+          <h3>⭐ 저장한 번호 <span class="muted" id="savedCount"></span></h3>
+          <div id="savedList"></div>
+        </aside>
       </div>
     </div>
     <div class="card">
@@ -1311,6 +1329,7 @@ window.addCart = (str, src) => {
 };
 function renderCart() {
   if (typeof selRounds !== 'undefined') renderRecent();
+  if (typeof saved !== 'undefined') renderSaved();
   const badge = document.getElementById('cartBadge');
   badge.textContent = cart.length || ''; badge.style.display = cart.length ? '' : 'none';
   document.getElementById('cartInfo').textContent = `${cart.length}/${CART_MAX}게임 · ${(cart.length * 1000).toLocaleString()}원`;
@@ -1337,6 +1356,42 @@ document.getElementById('pickToCart').onclick = () => {
   if (picked.size !== 6) return toast('번호 6개를 골라주세요.');
   addCart([...picked], '내가 고른 번호');
 };
+
+/* ---------- 저장한 번호 ---------- */
+const SAVED_KEY = 'lotto_saved_v1', SAVED_MAX = 20;
+let saved = (() => { try { return JSON.parse(localStorage.getItem(SAVED_KEY)) || []; } catch { return []; } })();
+const persistSaved = () => { try { localStorage.setItem(SAVED_KEY, JSON.stringify(saved)); } catch {} };
+function renderSaved() {
+  document.getElementById('savedCount').textContent = `(${saved.length}/${SAVED_MAX})`;
+  const inCart = new Set(cart.map(c => c.nums.join()));
+  document.getElementById('savedList').innerHTML = saved.length
+    ? saved.map((v, i) => {
+        const added = inCart.has(v.nums.join());
+        return `<div class="saved-item">
+          <div class="saved-top"><b>${v.name}</b><span class="muted">${new Date(v.time).toLocaleDateString('ko-KR')}</span></div>
+          <div class="mini-balls">${v.nums.map(n => ballHTML(n, true)).join('')}</div>
+          <div class="row saved-actions">
+            <button class="btn small" onclick="savedToCart(${i})" ${added ? 'disabled' : ''}>${added ? '✓ 담김' : '🛒 담기'}</button>
+            <button class="btn ghost small" onclick="savedLoad(${i})">불러오기</button>
+            <button class="btn ghost small" onclick="savedDel(${i})">삭제</button>
+          </div>
+        </div>`;
+      }).join('')
+    : '<p class="muted">아직 저장한 번호가 없어요.<br>번호 6개를 고른 뒤 ⭐ 저장을 눌러 보세요.</p>';
+}
+document.getElementById('savePick').onclick = () => {
+  if (picked.size !== 6) return toast('번호 6개를 골라주세요.');
+  const nums = [...picked].sort((a, b) => a - b);
+  if (saved.some(v => v.nums.join() === nums.join())) return toast('이미 저장한 번호예요.');
+  if (saved.length >= SAVED_MAX) return toast(`최대 ${SAVED_MAX}개까지 저장할 수 있어요.\n안 쓰는 번호를 삭제해 주세요.`);
+  const no = saved.reduce((m, v) => Math.max(m, v.no || 0), 0) + 1;
+  saved.unshift({ no, name: `내 번호 ${no}`, nums, time: Date.now() });
+  persistSaved(); renderSaved();
+  toast('⭐ 번호를 저장했어요.\n언제든지 저장한 번호에서 구매 목록에 담을 수 있어요.');
+};
+window.savedToCart = i => addCart(saved[i].nums, `⭐ ${saved[i].name}`);
+window.savedLoad = i => { picked = new Set(saved[i].nums); renderPicker(); toast(`${saved[i].name}을 불러왔어요.`); };
+window.savedDel = i => { saved.splice(i, 1); persistSaved(); renderSaved(); };
 
 /* ---------- 시작 ---------- */
 resetBalls();
