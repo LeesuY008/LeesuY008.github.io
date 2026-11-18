@@ -73,6 +73,18 @@
   .badge { background: #e03131; color: #fff; border-radius: 999px; font-size: 11px; padding: 1px 6px; margin-left: 2px; }
   .steps { margin: 0; padding-left: 20px; line-height: 1.9; font-size: 14px; }
   .toast { position: fixed; left: 50%; bottom: 28px; transform: translate(-50%, 20px); background: #1d1f24; color: #fff; padding: 11px 18px; border-radius: 12px; font-size: 14px; opacity: 0; pointer-events: none; transition: .25s; z-index: 80; max-width: calc(100% - 32px); }
+  .deposit-note { margin-top: 12px; padding: 12px 14px; border-radius: 12px; background: #fff4e0; color: #7a4b00; font-size: 14px; line-height: 1.5; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .deposit-note span { flex: 1 1 240px; }
+  .deposit-note .btn { background: #ffe1a8; color: #7a4b00; }
+  @media (prefers-color-scheme: dark) { .deposit-note { background: #3a2c12; color: #ffd98a; } .deposit-note .btn { background: #5a4318; color: #ffd98a; } }
+  .modal-bg { position: fixed; inset: 0; background: rgba(10,12,20,.55); display: none; align-items: center; justify-content: center; padding: 16px; z-index: 90; }
+  .modal-bg.show { display: flex; animation: fadeIn .2s ease-out; }
+  .modal { background: var(--card); color: var(--text); border-radius: 18px; padding: 24px 22px 20px; max-width: 380px; width: 100%; text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,.3); animation: rise .25s cubic-bezier(.3,1.4,.5,1); }
+  .modal h3 { margin: 6px 0 10px; font-size: 18px; }
+  .modal p { margin: 0 0 6px; font-size: 14px; line-height: 1.6; }
+  .modal-icon { font-size: 34px; }
+  @keyframes fadeIn { from { opacity: 0; } }
+  @keyframes rise { from { transform: translateY(16px) scale(.96); opacity: 0; } }
   .toast.show { opacity: 1; transform: translate(-50%, 0); }
   .note { font-size: 12px; color: var(--muted); margin-top: 10px; line-height: 1.6; }
   .chips { display: flex; gap: 6px; flex-wrap: wrap; width: 100%; padding-left: 30px; }
@@ -290,6 +302,10 @@
         <a class="btn" href="https://el.dhlottery.co.kr/game/TotalGame.jsp?LottoId=LO40" target="_blank" rel="noopener" id="buyLink">동행복권에서 구매하기 ↗</a>
         <span class="muted">공식 판매처로 이동합니다 (로그인 필요)</span>
       </div>
+      <div class="deposit-note">
+        <span>💰 구매 전에 동행복권 <b>예치금을 미리 충전</b>해 주세요. 예치금이 부족하면 구매 화면에서 결제할 수 없어요.</span>
+        <a class="btn ghost small" href="https://www.dhlottery.co.kr/mypage/mndpChrg" target="_blank" rel="noopener">예치금 충전하기 ↗</a>
+      </div>
     </div>
     <div class="card">
       <h2>구매 방법</h2>
@@ -309,6 +325,18 @@
   </section>
 </div>
 <div class="toast" id="toast"></div>
+<div class="modal-bg" id="depositModal" role="dialog" aria-modal="true" aria-labelledby="depositTitle">
+  <div class="modal">
+    <div class="modal-icon">💰</div>
+    <h3 id="depositTitle">예치금을 미리 충전해 주세요</h3>
+    <p>구매 전에 동행복권 <b>예치금을 미리 충전</b>해 주세요. 예치금이 부족하면 구매 화면에서 결제할 수 없어요.</p>
+    <p class="muted">충전은 동행복권 사이트에서 로그인 후 진행되며, 담아둔 번호는 이 브라우저에 그대로 저장돼요.</p>
+    <div class="row" style="justify-content:center; margin-top:16px">
+      <a class="btn ghost" href="https://www.dhlottery.co.kr/mypage/mndpChrg" target="_blank" rel="noopener" id="modalCharge">예치금 충전하기 ↗</a>
+      <button class="btn" id="modalOk">확인</button>
+    </div>
+  </div>
+</div>
 
 <script src="lotto_data.js"></script>
 <script>
@@ -357,7 +385,14 @@ function showTab(name) {
   if (name === 'history') renderHistory();
   if (name === 'stats') renderStats();
   if (name === 'predict') renderAnalysis();
+  if (name === 'buy') openDepositNotice();
 }
+function openDepositNotice() { document.getElementById('depositModal').classList.add('show'); document.getElementById('modalOk').focus(); }
+function closeDepositNotice() { document.getElementById('depositModal').classList.remove('show'); }
+document.getElementById('modalOk').onclick = closeDepositNotice;
+document.getElementById('modalCharge').addEventListener('click', closeDepositNotice);
+document.getElementById('depositModal').addEventListener('click', e => { if (e.target.id === 'depositModal') closeDepositNotice(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeDepositNotice(); });
 
 /* =========================================================
    추첨기 애니메이션 (공기 순환식 추첨기)
