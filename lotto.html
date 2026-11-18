@@ -88,6 +88,12 @@
   #bulkMsg, .toast { white-space: pre-line; text-align: center; }
   #bulkMsg { text-align: left; }
   .toast.show { opacity: 1; transform: translate(-50%, 0); }
+  .pick-row { cursor: pointer; border-radius: 10px; padding-left: 6px; padding-right: 6px; transition: background .15s; }
+  .pick-row:hover { background: var(--accent-soft); }
+  .pick-row.on { background: var(--accent-soft); box-shadow: inset 3px 0 0 var(--accent); }
+  .pick-row input { width: 18px; height: 18px; accent-color: var(--accent); margin: 0 2px 0 0; cursor: pointer; }
+  .pick-row input:disabled { cursor: not-allowed; }
+  .pick-row:has(input:disabled) { opacity: .55; cursor: not-allowed; }
   .pager { display: flex; gap: 6px; align-items: center; justify-content: center; flex-wrap: wrap; margin-top: 14px; }
   .pg { min-width: 34px; height: 34px; padding: 0 8px; border-radius: 9px; border: 1px solid var(--line); background: var(--card); color: var(--text); cursor: pointer; font-size: 14px; }
   .pg[aria-current="page"] { background: var(--accent); color: #fff; border-color: var(--accent); font-weight: 700; }
@@ -173,7 +179,10 @@
       </div>
     </div>
     <div class="card">
-      <h2>추첨 결과 <span class="muted" id="recentInfo"></span></h2>
+      <div class="row" style="justify-content:space-between; margin-bottom:10px">
+        <h2 style="margin:0">추첨 결과 <span class="muted" id="recentInfo"></span></h2>
+        <button class="btn small" id="selToCart" disabled>🛒 담기 <span id="selCount">(0/5)</span></button>
+      </div>
       <div id="recent"></div>
       <div class="pager" id="recentPager"></div>
     </div>
@@ -831,12 +840,39 @@ function addHistory(arr) {
   history.push(...arr);
   recentPage = 1;
   document.getElementById('cartFromDraw').disabled = false;
-  if (history.length > MAX_HISTORY) history = history.slice(-MAX_HISTORY);
+  if (history.length > MAX_HISTORY) { history = history.slice(-MAX_HISTORY); selRounds.clear(); }
   save();
   renderRecent();
 }
-const PAGE_SIZE = 10;
+const PAGE_SIZE = 10, SEL_MAX = 5;
 let recentPage = 1;
+const selRounds = new Set();   // 체크한 회차 (history 인덱스)
+function updateSelBtn() {
+  document.getElementById('selCount').textContent = `(${selRounds.size}/${SEL_MAX})`;
+  document.getElementById('selToCart').disabled = !selRounds.size;
+}
+document.getElementById('recent').addEventListener('change', e => {
+  if (!e.target.classList.contains('rchk')) return;
+  const idx = +e.target.dataset.idx;
+  if (e.target.checked) {
+    if (selRounds.size >= SEL_MAX) { e.target.checked = false; return toast(`최대 ${SEL_MAX}개까지 선택할 수 있어요.`); }
+    selRounds.add(idx);
+  } else selRounds.delete(idx);
+  renderRecent();
+});
+document.getElementById('selToCart').onclick = () => {
+  const idxs = [...selRounds].sort((a, b) => b - a).filter(i => history[i]);
+  let ok = 0, dup = 0, full = 0;
+  for (const i of idxs) {
+    const r = cartAdd(history[i].nums, `추첨 ${i + 1}회차`);
+    if (r === 'ok') ok++; else if (r === 'dup') dup++; else if (r === 'full') full++;
+  }
+  selRounds.clear(); renderRecent();
+  const msg = [ok ? `🛒 ${ok}개를 구매 목록에 담았어요 (${cart.length}/${CART_MAX}).` : '담은 번호가 없어요.'];
+  if (dup) msg.push(`이미 담긴 번호 ${dup}개는 제외했어요.`);
+  if (full) msg.push(`구매 목록이 가득 차서 ${full}개는 담지 못했어요.`);
+  toast(msg.join('\n'));
+};
 function renderRecent() {
   document.getElementById('roundLabel').textContent = `· 다음 ${history.length + 1}회차`;
   const el = document.getElementById('recent'), pager = document.getElementById('recentPager');
@@ -851,10 +887,16 @@ function renderRecent() {
   // 최신 회차가 1페이지 맨 위
   const hi = total - (recentPage - 1) * PAGE_SIZE, lo = Math.max(0, hi - PAGE_SIZE);
   document.getElementById('recentInfo').textContent = `${hi}~${lo + 1}회 · 총 ${total.toLocaleString()}회`;
-  el.innerHTML = history.slice(lo, hi).reverse().map((d, i) => `
-    <div class="set"><span class="muted" style="width:64px">${hi - i}회</span>
+  const full = selRounds.size >= SEL_MAX;
+  el.innerHTML = history.slice(lo, hi).reverse().map((d, i) => {
+    const idx = hi - 1 - i, on = selRounds.has(idx);
+    return `<label class="set pick-row ${on ? 'on' : ''}">
+      <input type="checkbox" class="rchk" data-idx="${idx}" ${on ? 'checked' : ''} ${full && !on ? 'disabled' : ''}>
+      <span class="muted" style="width:60px">${idx + 1}회</span>
       ${d.nums.map(n => ballHTML(n, true)).join('')}<span class="plus" style="font-size:16px">+</span>${ballHTML(d.bonus, true)}
-    </div>`).join('');
+    </label>`;
+  }).join('');
+  updateSelBtn();
   if (pages === 1) { pager.innerHTML = ''; return; }
   // 현재 페이지 주변 5개 번호만 표시
   let a = Math.max(1, recentPage - 2), b = Math.min(pages, a + 4); a = Math.max(1, b - 4);
@@ -925,7 +967,7 @@ function renderHistory() {
 }
 document.getElementById('clearBtn').onclick = () => {
   if (!confirm('모든 추첨 기록을 삭제할까요?')) return;
-  history = []; save(); renderHistory(); renderRecent();
+  history = []; save(); selRounds.clear(); renderHistory(); renderRecent();
 };
 document.getElementById('csvBtn').onclick = () => {
   const csv = '회차,번호1,번호2,번호3,번호4,번호5,번호6,보너스,합계,시간\n' +
@@ -1238,12 +1280,20 @@ function toast(msg) {
   t.textContent = msg; t.classList.add('show');
   clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), 2200);
 }
-window.addCart = (str, src) => {
+// 결과: 'ok' | 'bad' | 'dup' | 'full'
+function cartAdd(str, src) {
   const nums = (Array.isArray(str) ? str : String(str).split(',').map(Number)).slice().sort((a, b) => a - b);
-  if (nums.length !== 6 || new Set(nums).size !== 6) return toast('번호 6개가 필요해요.');
-  if (cart.some(c => c.nums.join() === nums.join())) return toast('이미 담긴 번호예요.');
-  if (cart.length >= CART_MAX) return toast(`온라인은 회차당 ${CART_MAX}게임까지만 살 수 있어요.`);
+  if (nums.length !== 6 || new Set(nums).size !== 6) return 'bad';
+  if (cart.some(c => c.nums.join() === nums.join())) return 'dup';
+  if (cart.length >= CART_MAX) return 'full';
   cart.push({ nums, src }); saveCart(); renderCart();
+  return 'ok';
+}
+window.addCart = (str, src) => {
+  const r = cartAdd(str, src);
+  if (r === 'bad') return toast('번호 6개가 필요해요.');
+  if (r === 'dup') return toast('이미 담긴 번호예요.');
+  if (r === 'full') return toast(`온라인은 회차당 ${CART_MAX}게임까지만 살 수 있어요.`);
   toast(`🛒 구매 목록에 담았어요 (${cart.length}/${CART_MAX})`);
 };
 function renderCart() {
