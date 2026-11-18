@@ -93,6 +93,13 @@
   .pg[aria-current="page"] { background: var(--accent); color: #fff; border-color: var(--accent); font-weight: 700; }
   .pg.off { opacity: .35; cursor: default; }
   .pg-info { width: 100%; text-align: center; margin-top: 2px; }
+  .report-table td, .report-table th { white-space: nowrap; }
+  .report-table td:first-child { color: var(--muted); font-size: 13px; }
+  .mini-balls { display: inline-flex; gap: 3px; }
+  .mini-balls .ball.sm { width: 28px; height: 28px; font-size: 12px; }
+  .tag { font-size: 11px; padding: 2px 7px; border-radius: 999px; margin-left: 4px; }
+  .tag.same { background: #d3f9d8; color: #2b8a3e; } .tag.up { background: #ffe3e3; color: #c92a2a; } .tag.down { background: #e7f5ff; color: #1971c2; }
+  .report-sum { margin: 14px 0 0; line-height: 2; }
   .note { font-size: 12px; color: var(--muted); margin-top: 10px; line-height: 1.6; }
   .chips { display: flex; gap: 6px; flex-wrap: wrap; width: 100%; padding-left: 30px; }
   .chip { font-size: 12px; background: var(--accent-soft); color: var(--text); padding: 3px 8px; border-radius: 999px; }
@@ -169,6 +176,10 @@
       <h2>추첨 결과 <span class="muted" id="recentInfo"></span></h2>
       <div id="recent"></div>
       <div class="pager" id="recentPager"></div>
+    </div>
+    <div class="card">
+      <h2>추첨 결과 리포트 <span class="muted" id="reportInfo"></span></h2>
+      <div id="report"></div>
     </div>
   </section>
 
@@ -829,6 +840,7 @@ let recentPage = 1;
 function renderRecent() {
   document.getElementById('roundLabel').textContent = `· 다음 ${history.length + 1}회차`;
   const el = document.getElementById('recent'), pager = document.getElementById('recentPager');
+  renderReport();
   const total = history.length, pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   recentPage = Math.min(Math.max(1, recentPage), pages);
   if (!total) {
@@ -858,6 +870,48 @@ document.getElementById('recentPager').onclick = e => {
   if (!b || b.classList.contains('off')) return;
   recentPage = +b.dataset.pg; renderRecent();
 };
+
+/* ---------- 추첨 결과 리포트 (내 추첨 vs 실제 1등 당첨번호) ---------- */
+function renderReport() {
+  const el = document.getElementById('report'), info = document.getElementById('reportInfo');
+  if (!history.length) { el.innerHTML = '<p class="muted">추첨을 하면 실제 당첨번호와 비교한 리포트가 나와요.</p>'; info.textContent = ''; return; }
+  const { rows: real } = getRowsFor('real');
+  const M = analyze(history), Rl = real.length ? analyze(real) : null;
+  const periodTxt = document.getElementById('period').selectedOptions[0].text;
+  info.textContent = Rl ? `내 추첨 ${M.N.toLocaleString()}회 vs 실제 1등 ${Rl.N}회 (${periodTxt})` : `내 추첨 ${M.N.toLocaleString()}회`;
+  const nums = Array.from({ length: 45 }, (_, i) => i + 1);
+  const topBy = (A, dir) => [...nums].sort((a, b) => dir * (A.cnt[b] - A.cnt[a]) || a - b);
+  const balls = arr => `<span class="mini-balls">${arr.map(n => ballHTML(n, true)).join('')}</span>`;
+  const oe = A => `${A.topOdd}:${6 - A.topOdd} <span class="muted">(${pct(A.oddD[A.topOdd] / A.N, 0)})</span>`;
+  const near = (d, tol) => Math.abs(d) <= tol ? '<span class="tag same">비슷</span>' : d > 0 ? '<span class="tag up">높음</span>' : '<span class="tag down">낮음</span>';
+  const diffNum = (a, b, tol) => `${a - b >= 0 ? '+' : ''}${(a - b).toFixed(1)} ${near(a - b, tol)}`;
+  const diffPct = (a, b) => `${a - b >= 0 ? '+' : ''}${((a - b) * 100).toFixed(1)}%p ${near((a - b) * 100, 5)}`;
+  const R = Rl;
+  const row = (label, mine, realv, diff = '') => `<tr><td>${label}</td><td>${mine}</td><td>${R ? realv : '-'}</td><td>${R ? diff : '-'}</td></tr>`;
+  const hotM = topBy(M, 1).slice(0, 10), hotR = R ? topBy(R, 1).slice(0, 10) : [];
+  const common = hotM.filter(n => hotR.includes(n)).sort((a, b) => a - b);
+  el.innerHTML = `
+    <div class="scroll" style="max-height:none">
+    <table class="report-table">
+      <thead><tr><th>항목</th><th>내 추첨</th><th>실제 1등</th><th>차이</th></tr></thead>
+      <tbody>
+        ${row('평균 합계', M.avgSum.toFixed(1), R && R.avgSum.toFixed(1), R && diffNum(M.avgSum, R.avgSum, 5))}
+        ${row('합계 80% 구간', `${M.sumLo}~${M.sumHi}`, R && `${R.sumLo}~${R.sumHi}`)}
+        ${row('가장 흔한 홀:짝', oe(M), R && oe(R), R && (M.topOdd === R.topOdd ? '<span class="tag same">같음</span>' : '<span class="tag down">다름</span>'))}
+        ${row('연번 포함 회차', pct(M.consecRate), R && pct(R.consecRate), R && diffPct(M.consecRate, R.consecRate))}
+        ${row('이월수 포함 회차', M.N > 1 ? pct(M.carryRate) : '-', R && pct(R.carryRate), R && M.N > 1 ? diffPct(M.carryRate, R.carryRate) : '')}
+        ${row('많이 나온 번호', balls(topBy(M, 1).slice(0, 5)), R && balls(topBy(R, 1).slice(0, 5)))}
+        ${row('적게 나온 번호', balls(topBy(M, -1).slice(0, 5)), R && balls(topBy(R, -1).slice(0, 5)))}
+      </tbody>
+    </table>
+    </div>
+    ${R ? `<p class="report-sum"><b>공통 핫 번호</b> <span class="muted">(양쪽 상위 10개에 모두 포함)</span><br>${common.length ? balls(common) : '<span class="muted">없음</span>'}</p>` : ''}
+    <p class="note">
+      ${M.N < 100 ? '추첨 횟수가 적으면 차이가 크게 나올 수 있어요.<br>100회 이상 추첨하면 비교가 더 정확해져요.<br>' : ''}
+      실제 당첨번호 기간은 '당첨번호 분석·예상' 탭의 기간 설정을 따라요.<br>
+      '비슷'은 합계 ±5, 비율 ±5%p 이내를 뜻해요.
+    </p>`;
+}
 
 /* ---------- 기록 ---------- */
 function renderHistory() {
@@ -1023,7 +1077,7 @@ function renderAnalysis() {
     </div>`).join('');
 }
 document.getElementById('src').onchange = () => { renderAnalysis(); document.getElementById('predictOut').innerHTML = ''; };
-document.getElementById('period').onchange = () => { renderAnalysis(); document.getElementById('predictOut').innerHTML = ''; };
+document.getElementById('period').onchange = () => { renderReport(); renderAnalysis(); document.getElementById('predictOut').innerHTML = ''; };
 
 /* ---------- 예상 번호 추천 ---------- */
 function weightedPick(weights, k) {
