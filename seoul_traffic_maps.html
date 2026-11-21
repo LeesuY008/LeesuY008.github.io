@@ -43,6 +43,11 @@
   .card h2{font-size:14px;margin:0 0 10px}
   #map{height:560px;border-radius:8px;overflow:hidden;background:var(--bg)}
   #svgmap{width:100%;height:560px;display:none}
+  #map3d{height:560px;border-radius:8px;overflow:hidden;background:var(--bg)}
+  .gulabel3d span,.hanlabel3d span{white-space:nowrap;font-weight:700;text-shadow:0 0 3px #fff,0 0 3px #fff,0 0 3px #fff;pointer-events:none}
+  .gulabel3d,.hanlabel3d{pointer-events:none}
+  .gulabel3d span{font-size:13px;color:#3d3b37}
+  .hanlabel3d span{font-size:13px;color:#1f5f9e;font-style:italic;letter-spacing:.3em}
   .legend{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:10px;font-size:12px;color:var(--ink2)}
   .grad{width:180px;height:10px;border-radius:5px;background:linear-gradient(90deg,#cde2fb,#86b6ef,#3987e5,#1c5cab,#0d366b)}
   .stats{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
@@ -146,8 +151,16 @@
 
 <div class="layout">
   <div class="card">
-    <h2 id="mapTitle">지도</h2>
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px">
+      <h2 id="mapTitle" style="margin:0">지도</h2>
+      <div class="chips" role="group" aria-label="2D/3D 보기">
+        <button class="chip" id="v2d" aria-pressed="true">2D 지도</button>
+        <button class="chip" id="v3d" aria-pressed="false">3D 지도</button>
+      </div>
+    </div>
+    <div class="muted" id="help3d" style="display:none;margin-bottom:6px">3D: 기둥 높이 = 차량 대수 · 드래그 이동 · <b>오른쪽 버튼(또는 Ctrl) 드래그로 회전·기울이기</b> · 왼쪽 위 나침반 클릭 시 정북 방향 · 크게 확대하면 건물도 3D로 표시</div>
     <div id="map" role="img" aria-label="지점별 교통량 지도"></div>
+    <div id="map3d" role="img" aria-label="지점별 교통량 3D 지도" style="display:none"></div>
     <svg id="svgmap" role="img" aria-label="지점별 교통량 지도(간이)"></svg>
     <div class="legend">
       <span>시간당 차량 대수</span>
@@ -464,7 +477,7 @@ document.querySelectorAll('#dirChips .chip').forEach(b=>b.addEventListener('clic
   document.getElementById('hanToggle').addEventListener('change',e=>{ if(!hanLayer) return; e.target.checked?hanLayer.addTo(map):hanLayer.remove(); });
 })();
 
-function update(){ drawMarkers(false); updatePanels(); drawDetail(); }
+function update(){ drawMarkers(false); updatePanels(); drawDetail(); if(typeof refresh3D==='function') refresh3D(false); }
 window.addEventListener('resize',()=>{ if(!useLeaflet) drawSvgMap(); drawDetail(); });
 
 // 한국 시간(Asia/Seoul) 기준 현재 요일·시각 (5분 단위로 내림)
@@ -537,11 +550,134 @@ async function loadLive(first){
     LIVE=await r.json();
     if(!LINKS){ const r2=await fetch('data/seoul_links.json'); if(r2.ok) LINKS=await r2.json(); }
   }catch(e){ if(first) LIVE=null; }
-  renderLiveStatus(); drawSpeed();
+  renderLiveStatus(); drawSpeed(); if(typeof refresh3D==='function') refresh3D(true);
   if(first && LIVE && LIVE.vol_ok>0 && liveAgeMin()<=180) setSource('live');
   else if(state.source==='live') setSource('live');
 }
 
+/* ===================== 3D 지도 (MapLibre GL) ===================== */
+let view='2d', m3=null, m3ready=false, m3loading=null, m3hover=null;
+const ML_VER='4.7.1';
+function loadMapLibre(){
+  if(window.maplibregl) return Promise.resolve();
+  if(m3loading) return m3loading;
+  m3loading=new Promise((res,rej)=>{
+    const css=document.createElement('link'); css.rel='stylesheet'; css.href=`https://unpkg.com/maplibre-gl@${ML_VER}/dist/maplibre-gl.css`; document.head.appendChild(css);
+    const s=document.createElement('script'); s.src=`https://unpkg.com/maplibre-gl@${ML_VER}/dist/maplibre-gl.js`; s.onload=res; s.onerror=()=>rej(new Error('3D 지도 라이브러리를 불러오지 못했습니다')); document.head.appendChild(s);
+  });
+  return m3loading;
+}
+function webglOK(){ try{ const c=document.createElement('canvas'); return !!(c.getContext('webgl2')||c.getContext('webgl')); }catch(e){ return false; } }
+const COL_HALF=75, COL_MAX_H=3500;   // 기둥 한 변의 절반(m), 최대 높이(m)
+function colFeatures(){
+  const tops=topIds(), mx=vmax();
+  return {type:'FeatureCollection',features:points.filter(p=>state.groups.has(p.group)).map(p=>{
+    const v=valueAt(p,state.minute), [la,lo]=posOf(p);
+    const dla=COL_HALF/111320, dlo=COL_HALF/(111320*Math.cos(la*Math.PI/180));
+    const sel=p.id===state.selected, top=tops.has(p.id);
+    return {type:'Feature',id:p.id,properties:{id:p.id,
+        h: v==null?30:Math.max(40,Math.min(1.15,v/mx)*COL_MAX_H),
+        c: top?TOP_RED:(sel?'#1f1f1d':colorFor(v))},
+      geometry:{type:'Polygon',coordinates:[[[lo-dlo,la-dla],[lo+dlo,la-dla],[lo+dlo,la+dla],[lo-dlo,la+dla],[lo-dlo,la-dla]]]}};
+  })};
+}
+function speedFeatures(){
+  if(!LINKS||!LIVE) return {type:'FeatureCollection',features:[]};
+  return {type:'FeatureCollection',features:LINKS.ids.map((id,i)=>{
+    const c=LINKS.c[i], co=[]; for(let k=0;k<c.length;k+=2) co.push([c[k+1],c[k]]);
+    const v=LIVE.speed[i];
+    return {type:'Feature',properties:{i,id,v:v==null?-1:v,c:spdColor(v)},geometry:{type:'LineString',coordinates:co}};
+  })};
+}
+function vis(on){ return on?'visible':'none'; }
+function domLabel(cls,text){ const d=document.createElement('div'); d.className=cls; d.innerHTML='<span>'+text+'</span>'; return d; }
+async function enter3D(){
+  if(!webglOK()){ alert('이 브라우저/기기에서는 3D 지도(WebGL)를 쓸 수 없어 2D로 표시합니다.'); return false; }
+  try{ await loadMapLibre(); }catch(e){ alert(e.message); return false; }
+  const box=document.getElementById('map3d'); box.style.display='block';
+  document.getElementById('map').style.display='none';
+  const c=map?map.getCenter():{lat:37.55,lng:126.99}, z=map?map.getZoom():11;
+  if(m3){ m3.resize(); m3.jumpTo({center:[c.lng,c.lat],zoom:z-1}); refresh3D(true); return true; }
+  const fallbackStyle={version:8,sources:{gray:{type:'raster',tileSize:256,attribution:'Tiles &copy; Esri',
+      tiles:['https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}'],maxzoom:13}},
+    layers:[{id:'gray',type:'raster',source:'gray'}]};
+  let style='https://tiles.openfreemap.org/styles/positron';
+  try{ const r=await fetch(style); if(!r.ok) throw 0; style=await r.json(); }catch(e){ style=fallbackStyle; }
+  m3=new maplibregl.Map({container:'map3d',style,center:[c.lng,c.lat],zoom:z-1,pitch:55,bearing:-17,maxPitch:75,
+    antialias:true,localIdeographFontFamily:"'Apple SD Gothic Neo','Malgun Gothic','Noto Sans KR',sans-serif",
+    attributionControl:{compact:true}});
+  m3.addControl(new maplibregl.NavigationControl({visualizePitch:true}),'top-left');
+  m3.addControl(new maplibregl.ScaleControl({unit:'metric'}),'bottom-left');
+  window.trafficMap3D=m3;
+  m3.on('load',()=>{
+    // 배경 지도의 영어 등 지명은 한글 이름 우선으로
+    (m3.getStyle().layers||[]).forEach(l=>{ if(l.type==='symbol' && l.layout && l.layout['text-field']) {
+      try{ m3.setLayoutProperty(l.id,'text-field',['coalesce',['get','name:ko'],['get','name']]); }catch(e){} } });
+    const firstSymbol=(m3.getStyle().layers||[]).find(l=>l.type==='symbol'); const before=firstSymbol?firstSymbol.id:undefined;
+    const HAN=JSON.parse(document.getElementById('hanData').textContent);
+    const GU=JSON.parse(document.getElementById('guData').textContent);
+    m3.addSource('han',{type:'geojson',data:HAN,attribution:'한강·건물: &copy; OpenStreetMap contributors'});
+    m3.addLayer({id:'han',type:'fill',source:'han',paint:{'fill-color':'#a9d1f5','fill-opacity':0.6,'fill-outline-color':'#5b9bd5'}},before);
+    m3.addSource('gu',{type:'geojson',data:GU});
+    m3.addLayer({id:'gu',type:'line',source:'gu',paint:{'line-color':'#55534e','line-width':1.2,'line-opacity':0.7,'line-dasharray':[3,2]}});
+    // 3D 건물 (OpenFreeMap 벡터 타일이 있을 때만)
+    const srcs=m3.getStyle().sources||{};
+    if(srcs.openmaptiles){
+      m3.addLayer({id:'bld3d',type:'fill-extrusion',source:'openmaptiles','source-layer':'building',minzoom:13,
+        paint:{'fill-extrusion-color':'#d9d6cf','fill-extrusion-opacity':0.75,
+          'fill-extrusion-height':['coalesce',['get','render_height'],8],'fill-extrusion-base':['coalesce',['get','render_min_height'],0]}});
+    }
+    m3.addSource('spd',{type:'geojson',data:speedFeatures()});
+    m3.addLayer({id:'spd',type:'line',source:'spd',layout:{'line-cap':'round','line-join':'round',visibility:vis(document.getElementById('spdToggle').checked && !!LIVE)},
+      paint:{'line-color':['get','c'],'line-opacity':0.9,'line-width':['interpolate',['linear'],['zoom'],10,0.8,13,2,16,5]}});
+    m3.addSource('cols',{type:'geojson',data:colFeatures()});
+    m3.addLayer({id:'cols',type:'fill-extrusion',source:'cols',paint:{'fill-extrusion-color':['get','c'],'fill-extrusion-height':['get','h'],
+      'fill-extrusion-base':0,'fill-extrusion-opacity':0.92}});
+    // 한글 이름표 (구, 한강)
+    m3._guMarkers=GU.features.map(f=>new maplibregl.Marker({element:domLabel('gulabel3d',f.properties.name)}).setLngLat([f.properties.lab[1],f.properties.lab[0]]).addTo(m3));
+    m3._hanMarkers=HAN.properties.labels.map(ll=>new maplibregl.Marker({element:domLabel('hanlabel3d','한강')}).setLngLat([ll[1],ll[0]]).addTo(m3));
+    // 마우스 올리기 / 클릭
+    m3.on('mousemove','cols',e=>{ m3.getCanvas().style.cursor='pointer'; const p=points[e.features[0].properties.id];
+      showTT(ttHtml(p,valueAt(p,state.minute)),e.originalEvent.clientX,e.originalEvent.clientY); });
+    m3.on('mouseleave','cols',()=>{ m3.getCanvas().style.cursor=''; hideTT(); });
+    m3.on('click','cols',e=>{ state.selected=e.features[0].properties.id; update(); });
+    m3.on('mousemove','spd',e=>{ if(m3.queryRenderedFeatures(e.point,{layers:['cols']}).length) return;
+      const f=e.features[0].properties, v=f.v<0?null:f.v;
+      showTT(`도로 구간(링크) ${f.id}<br><b>${v==null?'속도 자료 없음':v+' km/h'}</b> · ${v==null?'':(v<=15?'정체':v<=25?'서행':'원활')}<br><span style="color:var(--muted)">${LIVE.updated.slice(11,16)} 수집</span>`,e.originalEvent.clientX,e.originalEvent.clientY); });
+    m3.on('mouseleave','spd',hideTT);
+    m3ready=true; refresh3D(true);
+  });
+  return true;
+}
+function refresh3D(all){
+  if(!m3ready) return;
+  m3.getSource('cols').setData(colFeatures());
+  if(all){
+    m3.getSource('spd').setData(speedFeatures());
+    m3.setLayoutProperty('spd','visibility',vis(document.getElementById('spdToggle').checked && !!LIVE));
+    const gu=document.getElementById('guToggle').checked, han=document.getElementById('hanToggle').checked;
+    m3.setLayoutProperty('gu','visibility',vis(gu)); m3.setLayoutProperty('han','visibility',vis(han));
+    m3._guMarkers.forEach(mk=>mk.getElement().style.display=gu?'':'none');
+    m3._hanMarkers.forEach(mk=>mk.getElement().style.display=han?'':'none');
+  }
+}
+function exit3D(){
+  if(m3){ const c=m3.getCenter(); if(map) map.setView([c.lat,c.lng],Math.round(m3.getZoom()+1),{animate:false}); }
+  document.getElementById('map3d').style.display='none';
+  document.getElementById('map').style.display= useLeaflet?'block':'none';
+  if(map) map.invalidateSize();
+}
+async function setView(v){
+  if(v==='3d'){ const ok=await enter3D(); if(!ok) v='2d'; } else exit3D();
+  view=v;
+  document.getElementById('v2d').setAttribute('aria-pressed',v==='2d');
+  document.getElementById('v3d').setAttribute('aria-pressed',v==='3d');
+  document.getElementById('help3d').style.display= v==='3d'?'':'none';
+}
+document.getElementById('v2d').addEventListener('click',()=>setView('2d'));
+document.getElementById('v3d').addEventListener('click',()=>setView('3d'));
+['spdToggle','guToggle','hanToggle'].forEach(id=>document.getElementById(id).addEventListener('change',()=>refresh3D(true)));
+document.querySelectorAll('#groupFilters input[data-g]').forEach(c=>c.addEventListener('change',()=>refresh3D(false)));
 computeMax(); initMap(); goNow(); loadLive(true);
 setInterval(()=>loadLive(false), 2*60*1000);  // 2분마다 새 자료 확인
 })();
