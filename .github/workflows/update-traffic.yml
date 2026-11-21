@@ -31,6 +31,11 @@ jobs:
         env:
           SEOUL_API_KEY: ${{ secrets.SEOUL_API_KEY }}
 
+      - name: 도로명 검색용 목록 만들기 (없거나 30일 지났을 때만)
+        run: python3 scripts/build_link_names.py data/seoul_links.json data/seoul_link_names.json
+        env:
+          SEOUL_API_KEY: ${{ secrets.SEOUL_API_KEY }}
+
       - name: 커밋 후 사이트 반영
         run: |
           git config user.name "github-actions[bot]"
@@ -40,6 +45,7 @@ jobs:
             exit 0
           fi
           git add data/traffic_live.json
+          [ -f data/seoul_link_names.json ] && git add data/seoul_link_names.json
           if git diff --cached --quiet; then
             echo "바뀐 내용 없음"
             exit 0
