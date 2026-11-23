@@ -24,6 +24,8 @@ jobs:
         run: python3 scripts/update_lotto_data.py lotto_data.js
 
       - name: 1등 판매점 받기
+        # 판매점 사이트가 막혀도 당첨번호 업데이트는 커밋되도록
+        continue-on-error: true
         run: python3 scripts/update_store_data.py stores_data.js lotto_data.js
 
       - name: 바뀐 내용이 있으면 커밋

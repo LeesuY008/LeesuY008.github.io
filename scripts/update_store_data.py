@@ -50,7 +50,7 @@ def store_info(s):
         region = "온라인"
     elif region not in REGIONS:
         first = addr.split(" ")[0] if addr else ""
-        region = first if first in REGIONS else "기타"
+        region = first if first in REGIONS else "지역 미상"
     return {
         "n": name, "a": addr, "g": region,
         "c": 1 if s.get("status") == "폐점" else 0,
@@ -85,7 +85,7 @@ def main():
                 break
             except Exception as e:
                 err = e
-                time.sleep(2 * (attempt + 1))
+                time.sleep(10 * (attempt + 1))  # 요청이 몰리면 사이트가 막아서 천천히 재시도
         if err:
             print(f"{rnd}회 요청 실패: {err}")
             break
@@ -98,7 +98,7 @@ def main():
         if added % 100 == 0:
             write(db)
             print(f"{rnd}회까지 받음", flush=True)
-        time.sleep(0.08)
+        time.sleep(1.0)
     write(db)
     print(f"새로 {added}회 추가, {db['last']}회까지 · 판매점 {len(db['stores'])}곳 · 1등 {len(db['wins'])}건")
     if err:
