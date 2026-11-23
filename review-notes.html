@@ -274,7 +274,9 @@ const PROMPT = `첨부한 수업 자료를 분석해서, 아래 스키마에 정
 - week: 주차를 알 수 없으면 null.
 - group: 한 파일을 Part별로 나눴다면 모든 Part에 같은 자료 이름(예: "강의노트 1")을 넣고,
   title에는 그 Part 이름만 적어. 나누지 않았으면 생략.
-- 모든 텍스트는 한국어로.
+- 모든 텍스트는 한국어로. 자료가 영어로 되어 있거나 영어가 섞여 있으면 한국어로 쓰되,
+  개념 name과 용어 term에는 원문 영어를 괄호로 함께 적어. (예: "효율적 시장가설(Efficient Market Hypothesis, EMH)")
+  설명·요약에서도 핵심 용어는 처음 나올 때 한 번 영어를 함께 적어.
 
 [스키마]
 {
@@ -367,8 +369,8 @@ function load() {
       const name = str(o.subject) || '미분류', title = str(o.lecture && o.lecture.title), group = str(o.lecture && o.lecture.group);
       const s = d.subjects.find(x => x.name === name);
       const old = s && d.lectures.find(l => l.subject_id === s.id && (l.title === title || (group && l.title === group + ' · ' + title)));
-      if (old) { // 이미 있음 → 묶음 정보만 맞춰 줌 (복습 체크 기록은 그대로)
-        if (old.title !== title || (old.group || '') !== group) { old.title = title; old.group = group; added++; }
+      if (old) { // 이미 있음 → 내용이 바뀌었으면 고쳐 넣음 (항목 id를 유지해서 복습 체크 기록은 그대로)
+        if (syncLecture(old, buildLecture(o, s.id, false))) added++;
         return;
       }
       addLecture(d, o, name, false); added++;
@@ -396,9 +398,22 @@ function addLecture(d, obj, subjectName, isSample) {
     subj = { id: uid('s'), name: subjectName, semester: str(obj.semester), professor: str(obj.professor) };
     d.subjects.push(subj);
   }
+  const lec = buildLecture(obj, subj.id, isSample);
+  d.lectures.push(lec);
+  return lec;
+}
+/* 이미 저장된 강의를 새 분석 내용으로 맞춤. 같은 자리의 항목은 id를 물려받아 복습 체크가 유지됨 */
+function syncLecture(old, fresh) {
+  const strip = l => JSON.stringify(l, (k, v) => (k === 'id' || k === 'added' || k === 'subject_id') ? undefined : v);
+  if (strip(old) === strip(fresh)) return false;
+  ['concepts', 'terms', 'quizzes'].forEach(k => fresh[k].forEach((x, i) => { if (old[k][i]) x.id = old[k][i].id; }));
+  Object.assign(old, fresh, { id: old.id, added: old.added, subject_id: old.subject_id });
+  return true;
+}
+function buildLecture(obj, subjectId, isSample) {
   const L = obj.lecture || {};
-  const lec = {
-    id: uid('l'), subject_id: subj.id,
+  return {
+    id: uid('l'), subject_id: subjectId,
     week: Number.isFinite(+L.week) && L.week !== '' && L.week != null ? +L.week : null,
     title: str(L.title), group: str(L.group), source_file: str(L.source_file), summary: str(L.summary),
     sample: !!isSample, added: Date.now(),
@@ -422,8 +437,6 @@ function addLecture(d, obj, subjectName, isSample) {
       answer: str(q.answer), explanation: str(q.explanation)
     }))
   };
-  d.lectures.push(lec);
-  return lec;
 }
 
 /* =========================================================
