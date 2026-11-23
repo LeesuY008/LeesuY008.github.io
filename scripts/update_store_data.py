@@ -26,7 +26,7 @@ URL = "https://www.dhlottery.co.kr/wnprchsplcsrch/selectLtWnShp.do?srchWnShpRnk=
 FIRST_ROUND = 262
 TYPE = {"자동": 0, "수동": 1, "반자동": 2}
 NEW_DELAY = 1.0        # 새 회차 받을 때 요청 간격(초)
-BACKFILL_DELAY = 3.0   # 예전 회차 다시 받을 때 요청 간격(초) - 사이트 제한을 피하려고 느리게
+BACKFILL_DELAY = 5.0   # 예전 회차 다시 받을 때 요청 간격(초) - 사이트 제한을 피하려고 느리게
 
 # 17개 시·도 (저장은 짧은 이름, 화면에는 공식 이름으로 표시)
 REGION_ALIASES = {
