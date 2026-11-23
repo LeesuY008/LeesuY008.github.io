@@ -1,0 +1,44 @@
+name: 1등 판매점 정보 보완 (예전 회차 천천히 다시 받기)
+
+on:
+  schedule:
+    # 6시간마다 60회씩. 사이트가 막으면 그 자리에서 멈추고 다음 실행 때 이어서 받음
+    - cron: "17 */6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+
+concurrency:
+  group: lotto-data
+  cancel-in-progress: false
+
+jobs:
+  backfill:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: 예전 회차 보완
+        run: python3 scripts/update_store_data.py stores_data.js lotto_data.js --backfill 60
+
+      - name: 바뀐 내용이 있으면 커밋
+        run: |
+          if git diff --quiet stores_data.js; then
+            echo "바뀐 내용 없음"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add stores_data.js
+          git commit -m "1등 판매점 정보 보완"
+          git pull --rebase
+          git push
+          gh api -X POST "repos/${{ github.repository }}/pages/builds" || true
+        env:
+          GH_TOKEN: ${{ github.token }}
