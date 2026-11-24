@@ -98,7 +98,7 @@ const PAGE = 100;
 let D = {}, cat = "전체", current = null;
 
 const tel = (t) => t ? `<a class="tel" href="tel:${esc(t.replace(/-/g, ""))}">☎ ${esc(t)}</a>` : "";
-const home = (u) => u ? `<a href="${esc(u)}" target="_blank" rel="noopener">홈페이지</a>` : "";
+const home = (u) => /^https?:\/\//i.test(u || "") ? `<a href="${esc(u)}" target="_blank" rel="noopener">홈페이지</a>` : "";
 const region = (sido, sgg) => `${SIDO[sido] ? sido : ""}${sgg ? " " + sgg : ""}`.trim();
 const fmt = (n) => n.toLocaleString("ko-KR");
 // 받침 있으면 a, 없으면 b ("사과는", "쌀은")

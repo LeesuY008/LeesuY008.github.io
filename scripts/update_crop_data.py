@@ -17,7 +17,7 @@ from datetime import datetime, timedelta, timezone
 
 sys.path.insert(0, os.path.dirname(__file__))
 from crop_lib import (extract_phone, load_csv_rows, merge_stores, parse_rda_centers,  # noqa: E402
-                      split_region, summarize_gap)  # noqa: E402
+                      safe_url, split_region, summarize_gap)  # noqa: E402
 from sources import SOURCES  # noqa: E402
 
 KST = timezone(timedelta(hours=9))
@@ -95,7 +95,7 @@ def build_contacts():
     for c, tel in zip(centers, phones):
         key = f"{c['sido']} {c['sigungu']}".strip()
         by_region.setdefault(key, []).append({"type": "농업기술센터" if c["name"].endswith("센터") else "농업기술원",
-                                             "name": c["name"], "tel": tel, "homepage": c["homepage"]})
+                                             "name": c["name"], "tel": tel, "homepage": safe_url(c["homepage"])})
     return {"meta": meta(src["name"] + " (전화번호: 각 기관 홈페이지)"), "by_region": by_region}
 
 
@@ -121,7 +121,7 @@ def build_nurseries():
             continue
         sido, sigungu = split_region(get("회사주소"))
         items.append({"name": get("회사명"), "addr": get("회사주소"), "sido": sido, "sigungu": sigungu,
-                      "homepage": get("홈페이지 링크"), "products": get("대표 상품")})
+                      "homepage": safe_url(get("홈페이지 링크")), "products": get("대표 상품")})
     return {"meta": meta(nm), "items": items}
 
 

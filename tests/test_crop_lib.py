@@ -5,7 +5,7 @@ import unittest
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "scripts"))
 from crop_lib import (contacts_for, extract_phone, load_csv_rows,  # noqa: E402
                       match_crop, summarize_gap, merge_stores, normalize_phone, normalize_sido,
-                      parse_rda_centers, split_region)
+                      parse_rda_centers, safe_url, split_region)
 
 RDA_HTML = '''
 <h2 class="sec-tit">농업기술원</h2>
@@ -84,6 +84,13 @@ class T(unittest.TestCase):
     def test_split_region_merged_jeonnam_gwangju(self):
         self.assertEqual(split_region("전남광주통합특별시 나주시 빛가람로 1"), ("전남", "나주시"))
         self.assertEqual(split_region("전남광주통합특별시 북구 용봉로 77"), ("광주", "북구"))
+
+    def test_safe_url(self):
+        self.assertEqual(safe_url("https://a.kr/x"), "https://a.kr/x")
+        self.assertEqual(safe_url(" www.a.kr "), "https://www.a.kr")
+        self.assertEqual(safe_url("javascript:alert(1)"), "")
+        self.assertEqual(safe_url("JaVaScRiPt:alert(1)"), "")
+        self.assertEqual(safe_url("없음"), "")
 
     def test_load_csv_cp949(self):
         raw = "업체명,연락처\n우리농원,031-111-2222\n".encode("cp949")

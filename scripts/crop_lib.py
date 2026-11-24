@@ -117,6 +117,16 @@ def contacts_for(sido, sigungu, contacts):
 
 
 
+def safe_url(raw):
+    """http(s) 주소만 통과. 'www.'로 시작하면 https를 붙인다. 그 밖(javascript: 등)은 빈 문자열."""
+    u = (raw or "").strip()
+    if re.match(r"(?i)^https?://[^\s\"'<>]+$", u):
+        return u
+    if re.match(r"(?i)^www\.[^\s\"'<>]+$", u):
+        return "https://" + u
+    return ""
+
+
 def load_csv_rows(raw):
     """공공데이터 CSV(UTF-8 또는 CP949) → dict 목록"""
     for enc in ("utf-8-sig", "cp949"):
