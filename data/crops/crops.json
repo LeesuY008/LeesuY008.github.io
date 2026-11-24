@@ -981,10 +981,11 @@
   ],
   "seed_type": "tree",
   "photo": {
-   "url": "https://upload.wikimedia.org/wikipedia/commons/3/3a/Korean_raspberry_2008.jpg",
+   "url": "images/crops/rubus.jpg",
    "author": "성락 + 연주",
    "license": "CC BY 2.0",
-   "page": "https://commons.wikimedia.org/wiki/File:Korean_raspberry_2008.jpg"
+   "page": "https://commons.wikimedia.org/wiki/File:Korean_raspberry_2008.jpg",
+   "note": "열매 부분 확대"
   }
  },
  {
@@ -1003,10 +1004,10 @@
   ],
   "seed_type": "tree",
   "photo": {
-   "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/a/a1/Castanea_crenata3.jpg/960px-Castanea_crenata3.jpg",
-   "author": "KENPEI",
+   "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/5/50/Frucht_der_Edelkastanie.jpg/960px-Frucht_der_Edelkastanie.jpg",
+   "author": "Benjamin Gimmel, BenHur",
    "license": "CC BY-SA 3.0",
-   "page": "https://commons.wikimedia.org/wiki/File:Castanea_crenata3.jpg"
+   "page": "https://commons.wikimedia.org/wiki/File:Frucht_der_Edelkastanie.jpg"
   }
  },
  {
@@ -1025,10 +1026,10 @@
   ],
   "seed_type": "tree",
   "photo": {
-   "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/b/b1/Ziziphus_jujuba.jpg/960px-Ziziphus_jujuba.jpg",
-   "author": "Tokyo Watcher at English Wikipedia",
-   "license": "CC BY-SA 3.0",
-   "page": "https://commons.wikimedia.org/wiki/File:Ziziphus_jujuba.jpg"
+   "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/5/59/DFC_3955_A_close-up_pile_of_ripe_jujube_fruits_showing_their_mottled_brown_and_yellow_skins.jpg/960px-DFC_3955_A_close-up_pile_of_ripe_jujube_fruits_showing_their_mottled_brown_and_yellow_skins.jpg",
+   "author": "PattayaPatrol",
+   "license": "CC BY-SA 4.0",
+   "page": "https://commons.wikimedia.org/wiki/File:DFC_3955_A_close-up_pile_of_ripe_jujube_fruits_showing_their_mottled_brown_and_yellow_skins.jpg"
   }
  },
  {
@@ -1066,10 +1067,10 @@
   ],
   "seed_type": "tree",
   "photo": {
-   "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/7/74/Noyer_centenaire_en_automne.JPG/960px-Noyer_centenaire_en_automne.JPG",
-   "author": "Thesupermat",
-   "license": "CC BY-SA 3.0",
-   "page": "https://commons.wikimedia.org/wiki/File:Noyer_centenaire_en_automne.JPG"
+   "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/3/3f/Juglans_regia_nuts%2C_apex_and_base.jpg/960px-Juglans_regia_nuts%2C_apex_and_base.jpg",
+   "author": "Eiku en exil",
+   "license": "CC BY 4.0",
+   "page": "https://commons.wikimedia.org/wiki/File:Juglans_regia_nuts,_apex_and_base.jpg"
   }
  },
  {
@@ -1204,10 +1205,10 @@
   ],
   "seed_type": "tree",
   "photo": {
-   "url": "https://upload.wikimedia.org/wikipedia/commons/d/d4/Schisandra_sinensis.jpg",
-   "author": "Doronenko",
-   "license": "CC BY 2.5",
-   "page": "https://commons.wikimedia.org/wiki/File:Schisandra_sinensis.jpg"
+   "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/0/0e/Omija.jpg/960px-Omija.jpg",
+   "author": "ally j",
+   "license": "CC0",
+   "page": "https://commons.wikimedia.org/wiki/File:Omija.jpg"
   }
  }
 ]

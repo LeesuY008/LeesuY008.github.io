@@ -63,8 +63,8 @@ C = [
 ]
 
 
-# 위키백과 대표 이미지가 식물 도감 그림인 작물은 실제 사진 파일로 바꾼다 (2026-11-24 선정)
-PHOTO_OVERRIDE = {"corn": "File:Corn on the cob half open.jpg", "peanut": "File:Roasted Peanuts with shell.jpg", "garlic": "File:Garlic bulbs and cloves.jpg", "ginger": "File:Ginger rhizome.jpg", "peach": "File:Peach fruit 3.jpg", "sesame": "File:Sa white sesame seeds.jpg"}
+# 위키백과 대표 이미지가 식물 도감 그림이거나 열매가 잘 안 보이는 작물은 실제 사진 파일로 바꾼다 (2026-11-24 선정)
+PHOTO_OVERRIDE = {"corn": "File:Corn on the cob half open.jpg", "peanut": "File:Roasted Peanuts with shell.jpg", "garlic": "File:Garlic bulbs and cloves.jpg", "ginger": "File:Ginger rhizome.jpg", "peach": "File:Peach fruit 3.jpg", "sesame": "File:Sa white sesame seeds.jpg", "jujube": "File:DFC 3955 A close-up pile of ripe jujube fruits showing their mottled brown and yellow skins.jpg", "chestnut": "File:Frucht der Edelkastanie.jpg", "walnut": "File:Juglans regia nuts, apex and base.jpg", "schisandra": "File:Omija.jpg"}
 
 
 def get(url):
@@ -137,5 +137,10 @@ for c in out:
     c["aliases"] += [a for a in e.get("aliases", []) if a not in c["aliases"]]
     if e.get("exclude"):
         c["exclude"] = e["exclude"]
+# 위키미디어 사진을 잘라 저장소에 둔 경우 (CC 라이선스 범위에서 일부 확대)
+LOCAL_PHOTO = {"rubus": {"url": "images/crops/rubus.jpg", "note": "열매 부분 확대"}}
+for c in out:
+    if c["key"] in LOCAL_PHOTO:
+        c["photo"].update(LOCAL_PHOTO[c["key"]])
 json.dump(out, open(sys.argv[1], "w", encoding="utf-8"), ensure_ascii=False, indent=1)
 print(len(out), "crops")

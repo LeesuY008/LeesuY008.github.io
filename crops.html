@@ -173,7 +173,7 @@ function renderDetail() {
   const place = sido ? `${SIDO[sido]}${sgg ? " " + sgg : ""}` : "전국";
 
   $("#hero").innerHTML = `<figure><img src="${esc(c.photo.url)}" alt="${esc(c.name)} 사진">
-      <figcaption>사진: ${esc(c.photo.author || "작자 미상")} · ${esc(c.photo.license)} · <a href="${esc(c.photo.page)}" target="_blank" rel="noopener">위키미디어 공용</a></figcaption></figure>
+      <figcaption>사진: ${esc(c.photo.author || "작자 미상")} · ${esc(c.photo.license)}${c.photo.note ? " · " + esc(c.photo.note) : ""} · <a href="${esc(c.photo.page)}" target="_blank" rel="noopener">위키미디어 공용</a></figcaption></figure>
     <div><h2>${esc(c.name)}</h2><span class="tag">${esc(c.category)}</span>
       <p>${esc(c.desc)}</p>
       <p class="meta">주산지 (참고용): ${c.main_regions.map((r) => `<span class="tag">${esc(SIDO[r] || r)}</span>`).join("")}</p>
