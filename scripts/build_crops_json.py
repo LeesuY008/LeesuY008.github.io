@@ -63,6 +63,10 @@ C = [
 ]
 
 
+# 위키백과 대표 이미지가 식물 도감 그림인 작물은 실제 사진 파일로 바꾼다 (2026-11-24 선정)
+PHOTO_OVERRIDE = {"corn": "File:Corn on the cob half open.jpg", "peanut": "File:Roasted Peanuts with shell.jpg", "garlic": "File:Garlic bulbs and cloves.jpg", "ginger": "File:Ginger rhizome.jpg", "peach": "File:Peach fruit 3.jpg", "sesame": "File:Sa white sesame seeds.jpg"}
+
+
 def get(url):
     for n in range(3):
         try:
@@ -102,6 +106,9 @@ def resolve(t):
         t = rmap[t]; seen += 1
     return t
 fnames = {c[4]: pages.get(resolve(c[4]), {}).get("pageimage") for c in C}
+for c in C:
+    if c[0] in PHOTO_OVERRIDE:
+        fnames[c[4]] = PHOTO_OVERRIDE[c[0]].removeprefix("File:").replace(" ", "_")
 time.sleep(3)
 files = ["File:" + f for f in fnames.values() if f]
 infos, frmap = batch("https://commons.wikimedia.org/w/api.php",

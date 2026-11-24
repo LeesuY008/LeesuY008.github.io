@@ -20,7 +20,7 @@
   h1 { margin: 0 0 4px; font-size: 26px; }
   .sub { color: var(--muted); margin: 0 0 18px; font-size: 14px; line-height: 1.5; }
   .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 18px; margin-bottom: 14px; }
-  .controls { display: grid; grid-template-columns: 1fr auto auto; gap: 8px; }
+  .controls { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
   input, select { font: inherit; font-size: 15px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--card); color: var(--text); min-width: 0; }
   .chips { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
   .chip { border: 1px solid var(--line); background: var(--card); color: var(--text); padding: 7px 14px; border-radius: 999px; cursor: pointer; font-size: 14px; }
@@ -52,8 +52,7 @@
   .back { border: 0; background: none; color: var(--accent); cursor: pointer; font: inherit; font-size: 14px; padding: 0; margin-bottom: 10px; }
   [hidden] { display: none !important; }
   @media (max-width: 640px) {
-    .controls { grid-template-columns: 1fr 1fr; }
-    .controls input { grid-column: 1 / -1; }
+    #cropSel, #q { grid-column: 1 / -1; }
     .hero { grid-template-columns: 1fr; }
   }
 </style>
@@ -66,6 +65,7 @@
 
   <div class="card">
     <div class="controls">
+      <select id="cropSel" aria-label="작물 선택 (가나다순)"><option value="">작물 선택 (가나다순)</option></select>
       <input id="q" type="search" placeholder="작물 검색 (예: 사과, 샤인머스캣, 깻잎)" aria-label="작물 검색">
       <select id="sido" aria-label="시·도"><option value="">전국</option></select>
       <select id="sigungu" aria-label="시·군·구" disabled><option value="">시·군·구 전체</option></select>
@@ -95,6 +95,10 @@ const SIDO = { 서울: "서울특별시", 부산: "부산광역시", 대구: "�
   경남: "경상남도", 제주: "제주특별자치도" };
 const CATS = ["전체", "곡물", "채소", "과일", "특용작물"];
 const PAGE = 100;
+// 첫 글자의 초성 (쌍자음은 홑자음으로 묶음)
+const CHO = "ㄱㄱㄴㄷㄷㄹㅁㅂㅂㅅㅅㅇㅈㅈㅊㅋㅌㅍㅎ";
+const initial = (w) => { const c = w.charCodeAt(0) - 0xac00; return c >= 0 && c <= 11171 ? CHO[Math.floor(c / 588)] : w[0]; };
+const byName = (a, b) => a.name.localeCompare(b.name, "ko");
 let D = {}, cat = "전체", current = null;
 
 const tel = (t) => t ? `<a class="tel" href="tel:${esc(t.replace(/-/g, ""))}">☎ ${esc(t)}</a>` : "";
@@ -136,7 +140,7 @@ function regionOptions() {
 
 function renderGrid() {
   const q = $("#q").value.trim().replace(/\s+/g, "");
-  const list = D.crops.filter((c) => (cat === "전체" || c.category === cat) &&
+  const list = [...D.crops].sort(byName).filter((c) => (cat === "전체" || c.category === cat) &&
     (!q || c.aliases.some((a) => a.includes(q) || q.includes(a) && a.length > 1)));
   $("#grid").innerHTML = list.map((c) => `<button class="crop" data-key="${esc(c.key)}">
       <img loading="lazy" src="${esc(c.photo.url)}" alt="${esc(c.name)} 사진"><span>${esc(c.name)}</span></button>`).join("");
@@ -230,8 +234,16 @@ function renderDetail() {
     sido ? "이 지역 문의처 정보가 없습니다." : "위에서 시·도를 고르면 그 지역 농업기술센터가 나옵니다.");
 }
 
+function fillCropSelect() {
+  const groups = {};
+  [...D.crops].sort(byName).forEach((c) => (groups[initial(c.name)] ||= []).push(c));
+  $("#cropSel").insertAdjacentHTML("beforeend", Object.entries(groups).map(([g, cs]) =>
+    `<optgroup label="${esc(g)}">${cs.map((c) => `<option value="${esc(c.key)}">${esc(c.name)}</option>`).join("")}</optgroup>`).join(""));
+}
+
 function show(key) {
   current = D.crops.find((c) => c.key === key) || null;
+  $("#cropSel").value = current ? current.key : "";
   $("#pick").hidden = !!current;
   $("#detail").hidden = !current;
   if (current) { renderDetail(); window.scrollTo({ top: 0 }); }
@@ -273,6 +285,8 @@ function fillSigungu() {
     $("#cats").querySelectorAll(".chip").forEach((b) => b.classList.toggle("active", b === e.target));
     show(""); renderGrid(); writeHash();
   };
+  fillCropSelect();
+  $("#cropSel").onchange = (e) => { show(e.target.value); writeHash(); };
   $("#q").oninput = () => { show(""); renderGrid(); writeHash(); };
   $("#grid").onclick = (e) => { const b = e.target.closest(".crop"); if (b) { show(b.dataset.key); writeHash(); } };
   $("#back").onclick = () => { show(""); writeHash(); };
