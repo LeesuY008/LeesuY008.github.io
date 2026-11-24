@@ -51,6 +51,10 @@
   .more { margin-top: 10px; border: 1px solid var(--line); background: var(--card); color: var(--text); border-radius: 10px; padding: 9px 14px; cursor: pointer; font: inherit; font-size: 14px; }
   .back { border: 0; background: none; color: var(--accent); cursor: pointer; font: inherit; font-size: 14px; padding: 0; margin-bottom: 10px; }
   [hidden] { display: none !important; }
+  .topnav { display: flex; gap: 8px; margin-bottom: 14px; }
+  .topnav button, .topnav a { display: inline-flex; align-items: center; gap: 4px; border: 1px solid var(--line); background: var(--card);
+    color: var(--text); border-radius: 999px; padding: 8px 14px; font: inherit; font-size: 14px; cursor: pointer; text-decoration: none; }
+  .topnav button:hover, .topnav a:hover { border-color: var(--accent); color: var(--accent); }
   @media (max-width: 640px) {
     #cropSel, #q { grid-column: 1 / -1; }
     .hero { grid-template-columns: 1fr; }
@@ -59,6 +63,10 @@
 </head>
 <body>
 <div class="wrap">
+  <nav class="topnav" aria-label="페이지 이동">
+    <button type="button" id="navBack">← 뒤로가기</button>
+    <a href="index.html" id="navHome">⌂ 첫 페이지</a>
+  </nav>
   <h1>농산물 판매처 찾기</h1>
   <p class="sub">작물을 고르면 사진과 주산지, GAP 인증 산지, 로컬푸드 직매장, 씨앗·묘목 업체, 지역 농업기술센터 연락처를 보여줍니다.
     개별 농가 연락처는 공개 자료에 없어서 <b>지역 문의처</b>로 연결합니다.</p>
@@ -257,12 +265,14 @@ function readHash() {
   $("#sigungu").value = $("#sido").value && REG[sido].has(sgg) ? sgg : "";
   show(p.get("crop") || "");
 }
-function writeHash() {
+function writeHash(push = false) {
   const p = new URLSearchParams();
   if (current) p.set("crop", current.key);
   if ($("#sido").value) p.set("sido", $("#sido").value);
   if ($("#sigungu").value) p.set("sgg", $("#sigungu").value);
-  history.replaceState(null, "", "#" + p.toString());
+  const url = "#" + p.toString();
+  if (push && url !== location.hash) history.pushState({ inPage: true }, "", url);
+  else history.replaceState(history.state, "", url);
 }
 
 let REG = {};
@@ -286,15 +296,21 @@ function fillSigungu() {
     show(""); renderGrid(); writeHash();
   };
   fillCropSelect();
-  $("#cropSel").onchange = (e) => { show(e.target.value); writeHash(); };
+  $("#cropSel").onchange = (e) => { show(e.target.value); writeHash(true); };
   $("#q").oninput = () => { show(""); renderGrid(); writeHash(); };
-  $("#grid").onclick = (e) => { const b = e.target.closest(".crop"); if (b) { show(b.dataset.key); writeHash(); } };
-  $("#back").onclick = () => { show(""); writeHash(); };
+  $("#grid").onclick = (e) => { const b = e.target.closest(".crop"); if (b) { show(b.dataset.key); writeHash(true); } };
+  $("#back").onclick = () => { show(""); writeHash(true); };
+  // 뒤로가기: 이 페이지 안에서 이동한 기록이 있거나 사이트 안에서 들어왔으면 이전 화면, 아니면 첫 페이지
+  $("#navBack").onclick = () => {
+    const fromSite = document.referrer && new URL(document.referrer).origin === location.origin;
+    if (history.state?.inPage || fromSite) history.back();
+    else location.href = "index.html";
+  };
   $("#sido").onchange = () => { fillSigungu(); renderDetail(); writeHash(); };
   $("#sigungu").onchange = () => { renderDetail(); writeHash(); };
   renderGrid();
   readHash();
-  window.addEventListener("hashchange", readHash);
+  window.addEventListener("popstate", readHash);
 })();
 </script>
 </body>
