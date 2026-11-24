@@ -139,8 +139,25 @@ def check_not_worse(old_path, new):
         raise RuntimeError(f"{os.path.basename(old_path)}: 전화번호 {old} → {_phone_count(new)}개로 줄어 갱신 안 함")
 
 
+def fill_missing_phones(old_path, new):
+    """이번에 전화번호를 못 읽은 기관은 기존 파일의 번호를 그대로 쓴다 (해외 IP 차단 대비). 채운 개수를 돌려준다."""
+    if not os.path.exists(old_path):
+        return 0
+    with open(old_path, encoding="utf-8") as f:
+        old = {(k, r["name"]): r.get("tel", "") for k, rows in json.load(f)["by_region"].items() for r in rows}
+    filled = 0
+    for k, rows in new["by_region"].items():
+        for r in rows:
+            if not r.get("tel") and old.get((k, r["name"])):
+                r["tel"] = old[(k, r["name"])]
+                filled += 1
+    return filled
+
+
 def run_static(out_dir):
     results = {"contacts.json": build_contacts(), "stores.json": build_stores(), "nurseries.json": build_nurseries()}
+    n = fill_missing_phones(os.path.join(out_dir, "contacts.json"), results["contacts.json"])
+    print(f"전화번호를 못 읽은 기관 {n}곳은 기존 번호 유지")
     for name in ("contacts.json", "stores.json"):
         check_not_worse(os.path.join(out_dir, name), results[name])
     for name, obj in results.items():  # 전부 성공한 뒤에만 쓴다

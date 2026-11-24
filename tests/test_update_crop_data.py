@@ -39,6 +39,20 @@ class T(unittest.TestCase):
                 self.assertIn("2026-11-01", f.read())
             self.assertTrue(u.write_json(path, {"meta": {"updated": "2026-11-24"}, "v": 2}))
 
+    def test_fill_missing_phones_keeps_old_numbers(self):
+        old = {"by_region": {"경북 청송군": [{"name": "청송군 농업기술센터", "tel": "054-873-2440"}],
+                             "경북": [{"name": "경상북도 농업기술원", "tel": "053-320-0200"}]}}
+        new = {"by_region": {"경북 청송군": [{"name": "청송군 농업기술센터", "tel": ""}],
+                             "경북": [{"name": "경상북도 농업기술원", "tel": "053-111-2222"}],
+                             "경북 봉화군": [{"name": "봉화군 농업기술센터", "tel": ""}]}}
+        with tempfile.TemporaryDirectory() as d:
+            path = os.path.join(d, "contacts.json")
+            u.write_json(path, old)
+            self.assertEqual(u.fill_missing_phones(path, new), 1)
+        self.assertEqual(new["by_region"]["경북 청송군"][0]["tel"], "054-873-2440")
+        self.assertEqual(new["by_region"]["경북"][0]["tel"], "053-111-2222")
+        self.assertEqual(new["by_region"]["경북 봉화군"][0]["tel"], "")
+
     def test_guard_rejects_big_drop_in_phones(self):
         old = {"by_region": {"경북": [{"tel": "054-1"}] * 10}}
         worse = {"by_region": {"경북": [{"tel": "054-1"}] * 5 + [{"tel": ""}] * 5}}
