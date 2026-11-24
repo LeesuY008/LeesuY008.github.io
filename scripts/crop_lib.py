@@ -24,13 +24,6 @@ _MOVED = {"군위군": "대구"}
 # 전남·광주 통합 명칭: 자치구(…구)는 광주, 시·군은 전남으로 나눈다
 _MERGED_JG = ("전남광주통합특별시", "전남광주")
 
-# 공공데이터 원본 항목 이름 → 내부 이름. 실제 응답에 맞춰 바꾼다.
-FIELD_MAP = {
-    "group": "생산단체명", "person": "생산자명", "addr": "소재지",
-    "item": "품목", "area": "재배면적", "cert": "인증번호",
-}
-
-
 def normalize_sido(raw):
     s = (raw or "").strip()
     if s in SIDO_NAMES:
@@ -59,27 +52,22 @@ def split_region(addr):
     return (sido, sigungu)
 
 
-def mask_name(name):
-    s = re.sub(r"\s+", "", name or "")
-    if len(s) <= 1:
-        return s
-    return s[0] + "○" * (len(s) - 1)
-
-
 def match_crop(item_raw, crops):
     """품목 이름 → 작물 키.
 
     1) 괄호 앞 이름이나 괄호 안 이름이 별칭과 정확히 같으면 그 작물
     2) 아니면 두 글자 이상 별칭 중 가장 긴 것이 포함된 작물 ("청양고추" → 고추)
     한 글자 별칭("배", "무")은 정확히 같을 때만 쓴다. "배추", "무화과" 오인 방지.
+    작물의 exclude 단어가 들어 있으면 그 작물은 후보에서 뺀다 ("산딸기"는 딸기가 아님).
     """
     text = re.sub(r"\s+", "", item_raw or "")
     words = [w for w in re.split(r"[()\[\],/·]", text) if w]
-    for crop in crops:
+    cands = [c for c in crops if not any(x in text for x in c.get("exclude", []))]
+    for crop in cands:
         if any(a in words for a in crop["aliases"]):
             return crop["key"]
     best, best_len = None, 0
-    for crop in crops:
+    for crop in cands:
         for a in crop["aliases"]:
             if len(a) >= 2 and a in text and len(a) > best_len:
                 best, best_len = crop["key"], len(a)
@@ -88,24 +76,38 @@ def match_crop(item_raw, crops):
 
 def _num(v):
     try:
-        return float(str(v).replace(",", "")) if str(v).strip() else None
+        return float(str(v).replace(",", "")) if str(v).strip() else 0.0
     except ValueError:
-        return None
+        return 0.0
 
 
-def farm_record(row, crop_key):
-    f = FIELD_MAP
-    group = (row.get(f["group"]) or "").strip()
-    sido, sigungu = split_region(row.get(f["addr"]))
-    return {
-        "name": group or mask_name(row.get(f["person"])),
-        "kind": "group" if group else "person",
-        "crop": crop_key,
-        "item": (row.get(f["item"]) or "").strip(),
-        "sido": sido, "sigungu": sigungu,
-        "area_m2": _num(row.get(f["area"])),
-        "cert_no": (row.get(f["cert"]) or "").strip(),
-    }
+def summarize_gap(rows, crops):
+    """GAP 인증농가 현황(필지 단위) → {작물키: [{sido, sigungu, certs, area_m2, plan_t}]} (면적 큰 순)
+
+    원본에는 농가 이름이 없다. 인증번호 수를 '인증 건수'로 센다.
+    """
+    acc, item_cache = {}, {}
+    for r in rows:
+        item = r.get("품목", "")
+        if item not in item_cache:
+            item_cache[item] = match_crop(item, crops)
+        key = item_cache[item]
+        if not key:
+            continue
+        sido, sigungu = split_region(r.get("소재지"))
+        if not sido:
+            continue
+        a = acc.setdefault((key, sido, sigungu), {"certs": set(), "area": 0.0, "plan": 0.0})
+        a["certs"].add(r.get("인증번호"))
+        a["area"] += _num(r.get("재배면적(㎡)"))
+        a["plan"] += _num(r.get("생산계획량(톤)"))
+    out = {}
+    for (key, sido, sigungu), a in acc.items():
+        out.setdefault(key, []).append({"sido": sido, "sigungu": sigungu, "certs": len(a["certs"]),
+                                        "area_m2": round(a["area"]), "plan_t": round(a["plan"], 1)})
+    for v in out.values():
+        v.sort(key=lambda x: -x["area_m2"])
+    return out
 
 
 def contacts_for(sido, sigungu, contacts):

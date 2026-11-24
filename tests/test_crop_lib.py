@@ -3,8 +3,8 @@ import sys
 import unittest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "scripts"))
-from crop_lib import (contacts_for, extract_phone, farm_record, load_csv_rows,  # noqa: E402
-                      mask_name, match_crop, merge_stores, normalize_phone, normalize_sido,
+from crop_lib import (contacts_for, extract_phone, load_csv_rows,  # noqa: E402
+                      match_crop, summarize_gap, merge_stores, normalize_phone, normalize_sido,
                       parse_rda_centers, split_region)
 
 RDA_HTML = '''
@@ -38,12 +38,6 @@ class T(unittest.TestCase):
         self.assertEqual(split_region("경상북도 청송군 진보면 1"), ("경북", "청송군"))
         self.assertEqual(split_region("세종특별자치시 연서면"), ("세종", ""))
 
-    def test_mask_name_edge_cases(self):
-        self.assertEqual(mask_name("김철수"), "김○○")
-        self.assertEqual(mask_name("이"), "이")
-        self.assertEqual(mask_name(""), "")
-        self.assertEqual(mask_name(" 박 영희 "), "박○○")
-
     def test_match_crop_alias(self):
         crops = [{"key": "apple", "aliases": ["사과", "후지"]}]
         self.assertEqual(match_crop("사과(후지)", crops), "apple")
@@ -57,13 +51,29 @@ class T(unittest.TestCase):
         self.assertEqual(match_crop("청양고추", crops), "pepper")
         self.assertIsNone(match_crop("무화과", crops))
 
-    def test_farm_record_group_vs_person(self):
-        g = farm_record({"생산단체명": "청송사과영농조합", "생산자명": "", "소재지": "경상북도 청송군", "품목": "사과",
-                         "재배면적": "1200", "인증번호": "G1"}, "apple")
-        self.assertEqual((g["name"], g["kind"], g["sido"], g["sigungu"]), ("청송사과영농조합", "group", "경북", "청송군"))
-        p = farm_record({"생산단체명": "", "생산자명": "김철수", "소재지": "경상북도 청송군", "품목": "사과",
-                         "재배면적": "", "인증번호": "G2"}, "apple")
-        self.assertEqual((p["name"], p["kind"], p["area_m2"]), ("김○○", "person", None))
+    def test_match_crop_exclude_and_longer_alias(self):
+        crops = [{"key": "strawberry", "aliases": ["딸기"], "exclude": ["산딸기"]},
+                 {"key": "jujube", "aliases": ["대추"]},
+                 {"key": "tomato", "aliases": ["토마토", "대추방울"]}]
+        self.assertIsNone(match_crop("산딸기", crops))
+        self.assertEqual(match_crop("딸기(설향)", crops), "strawberry")
+        self.assertEqual(match_crop("대추방울", crops), "tomato")
+        self.assertEqual(match_crop("대추(사과대추)", crops), "jujube")
+
+    def test_summarize_gap_by_crop_and_region(self):
+        crops = [{"key": "apple", "aliases": ["사과"]}, {"key": "ginseng", "aliases": ["인삼"]}]
+        rows = [
+            {"인증번호": "1", "소재지": "경상북도 청송군", "품목": "사과", "재배면적(㎡)": "1000.0", "생산계획량(톤)": "2.5"},
+            {"인증번호": "1", "소재지": "경상북도 청송군", "품목": "사과", "재배면적(㎡)": "500", "생산계획량(톤)": "1"},
+            {"인증번호": "2", "소재지": "경상북도 청송군", "품목": "사과", "재배면적(㎡)": "", "생산계획량(톤)": "x"},
+            {"인증번호": "3", "소재지": "경상북도 영주시", "품목": "사과", "재배면적(㎡)": "9000", "생산계획량(톤)": "20"},
+            {"인증번호": "4", "소재지": "충청남도 아산시", "품목": "인삼류(기타)", "재배면적(㎡)": "100", "생산계획량(톤)": "0.1"},
+            {"인증번호": "5", "소재지": "충청남도 아산시", "품목": "무화과", "재배면적(㎡)": "100", "생산계획량(톤)": "1"},
+        ]
+        got = summarize_gap(rows, crops)
+        self.assertEqual(set(got), {"apple", "ginseng"})
+        self.assertEqual(got["apple"][0], {"sido": "경북", "sigungu": "영주시", "certs": 1, "area_m2": 9000, "plan_t": 20.0})
+        self.assertEqual(got["apple"][1], {"sido": "경북", "sigungu": "청송군", "certs": 2, "area_m2": 1500, "plan_t": 3.5})
 
     def test_contacts_fallback_to_sido(self):
         c = {"경북 청송군": [{"name": "청송군농업기술센터"}], "경북": [{"name": "경북농업기술원"}]}

@@ -12,7 +12,9 @@
   "aliases": [
    "쌀",
    "벼",
-   "미곡"
+   "미곡",
+   "찰벼",
+   "찹쌀"
   ],
   "seed_type": "seed",
   "photo": {
@@ -155,7 +157,10 @@
    "author": "Scott Bauer, USDA ARS",
    "license": "Public domain",
    "page": "https://commons.wikimedia.org/wiki/File:Patates.jpg"
-  }
+  },
+  "exclude": [
+   "돼지감자"
+  ]
  },
  {
   "key": "sweetpotato",
@@ -292,7 +297,10 @@
    "author": "Takeaway",
    "license": "CC BY-SA 4.0",
    "page": "https://commons.wikimedia.org/wiki/File:Madame_Jeanette_and_other_chillies.jpg"
-  }
+  },
+  "exclude": [
+   "고추냉이"
+  ]
  },
  {
   "key": "garlic",
@@ -317,7 +325,10 @@
    "author": "",
    "license": "Public domain",
    "page": "https://commons.wikimedia.org/wiki/File:Allium_sativum_Woodwill_1793.jpg"
-  }
+  },
+  "exclude": [
+   "산마늘"
+  ]
  },
  {
   "key": "onion",
@@ -466,7 +477,8 @@
    "토마토",
    "방울토마토",
    "대추방울토마토",
-   "대저토마토"
+   "대저토마토",
+   "대추방울"
   ],
   "seed_type": "seed",
   "photo": {
@@ -595,7 +607,8 @@
   ],
   "aliases": [
    "브로콜리",
-   "녹색꽃양배추"
+   "녹색꽃양배추",
+   "브로코리"
   ],
   "seed_type": "seed",
   "photo": {
@@ -712,7 +725,8 @@
    "부지화",
    "천혜향",
    "레드향",
-   "황금향"
+   "황금향",
+   "만감"
   ],
   "seed_type": "tree",
   "photo": {
@@ -736,7 +750,10 @@
    "포도",
    "샤인머스캣",
    "캠벨얼리",
-   "거봉"
+   "거봉",
+   "샤인마스캇",
+   "청포도",
+   "머루포도"
   ],
   "seed_type": "tree",
   "photo": {
@@ -856,7 +873,10 @@
    "author": "Ivar Leidus",
    "license": "CC BY-SA 4.0",
    "page": "https://commons.wikimedia.org/wiki/File:Garden_strawberry_(Fragaria_%C3%97_ananassa)_single2.jpg"
-  }
+  },
+  "exclude": [
+   "산딸기"
+  ]
  },
  {
   "key": "blueberry",

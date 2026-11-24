@@ -1,12 +1,13 @@
 """농산물 판매처 찾기(crops.html) 데이터 갱신 → data/crops/
 
-  python3 scripts/update_crop_data.py data/crops            GAP 인증 농가 갱신 (Secret DATA_GO_KR_KEY 필요)
+  python3 scripts/update_crop_data.py data/crops            GAP 인증 현황 갱신 (농림축산식품 공공데이터 포털 CSV)
   python3 scripts/update_crop_data.py data/crops --static   문의처·직매장·씨앗·묘목 업체 갱신 (키 필요 없음)
 
 실패하면 기존 파일을 그대로 두고 0이 아닌 코드로 끝낸다.
 """
 import json
 import os
+import re
 import sys
 import time
 import urllib.parse
@@ -15,7 +16,8 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
 
 sys.path.insert(0, os.path.dirname(__file__))
-from crop_lib import extract_phone, load_csv_rows, merge_stores, parse_rda_centers, split_region  # noqa: E402
+from crop_lib import (extract_phone, load_csv_rows, merge_stores, parse_rda_centers,  # noqa: E402
+                      split_region, summarize_gap)  # noqa: E402
 from sources import SOURCES  # noqa: E402
 
 KST = timezone(timedelta(hours=9))
@@ -37,7 +39,6 @@ def http(url, data=None, timeout=30, tries=3):
 
 def data_go_file(pk):
     """공공데이터포털 파일데이터 최신본 → (bytes, 데이터 이름)"""
-    import re
     page = http(f"https://www.data.go.kr/data/{pk}/fileData.do").decode("utf-8", "replace")
     m = re.search(r"fn_fileDataDown\('%s', '(uddi:[^']+)'" % pk, page)
     if not m:
@@ -131,8 +132,36 @@ def main(argv):
         return 1
 
 
+def latest_mafra_file(page):
+    """농림축산식품 공공데이터 포털 상세 페이지 → (가장 최근 file_sn, 기준일 YYYY-MM-DD)"""
+    best = None
+    for m in re.finditer(r"filedownload\('[^']+', 'file', '(\d+)'\);\"[^>]*>[^<]*_(\d{8})\.csv<", page):
+        if best is None or m.group(2) > best[1]:
+            best = (m.group(1), m.group(2))
+    if not best:
+        raise RuntimeError("GAP 파일 목록을 찾지 못함")
+    d = best[1]
+    return best[0], f"{d[:4]}-{d[4:6]}-{d[6:]}"
+
+
 def run_gap(out_dir):
-    raise NotImplementedError("Task 4")
+    src = SOURCES["gap"]
+    page = http(f"https://data.mafra.go.kr/opendata/data/indexOpenDataDetail.do?data_id={src['data_id']}")
+    sn, as_of = latest_mafra_file(page.decode("utf-8", "replace"))
+    raw = http("https://data.mafra.go.kr/opendata/data/downloadOpenDataWebFile.do",
+               {"data_id": src["data_id"], "file_ty_code": "file", "file_sn": sn}, timeout=120)
+    rows = load_csv_rows(raw)
+    if len(rows) < 100000:
+        raise RuntimeError(f"GAP 행 수가 너무 적음: {len(rows)}")
+    with open(os.path.join(out_dir, "crops.json"), encoding="utf-8") as f:
+        crops = json.load(f)
+    by_crop = summarize_gap(rows, crops)
+    write_json(os.path.join(out_dir, "gap.json"), {
+        "meta": {"sources": [src["name"]], "as_of": as_of, "updated": datetime.now(KST).strftime("%Y-%m-%d"),
+                 "rows": len(rows)},
+        "by_crop": by_crop})
+    print("gap.json 저장:", as_of, len(rows), "행,", len(by_crop), "작물")
+    return 0
 
 
 if __name__ == "__main__":

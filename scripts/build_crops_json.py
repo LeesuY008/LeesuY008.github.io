@@ -123,5 +123,12 @@ for key, name, cat, st, title, regions, extra, desc in C:
                           "author": re.sub(r"\s+", " ", re.sub(r"\S+ \[at\] \S+", "", strip_html(md.get("Artist", {}).get("value")))).strip()[:120],
                           "license": strip_html(md.get("LicenseShortName", {}).get("value")),
                           "page": ii["descriptionurl"]}})
+# GAP 품목 이름과 대조해 보탠 별칭·제외어 (2026-09-14 자료 기준)
+EXTRA = {"rice": {"aliases": ["찰벼", "찹쌀"]}, "grape": {"aliases": ["샤인마스캇", "청포도", "머루포도"]}, "hallabong": {"aliases": ["만감"]}, "tomato": {"aliases": ["대추방울"]}, "strawberry": {"exclude": ["산딸기"]}, "chili": {"exclude": ["고추냉이"]}, "potato": {"exclude": ["돼지감자"]}, "garlic": {"exclude": ["산마늘"]}, "broccoli": {"aliases": ["브로코리"]}}
+for c in out:
+    e = EXTRA.get(c["key"], {})
+    c["aliases"] += [a for a in e.get("aliases", []) if a not in c["aliases"]]
+    if e.get("exclude"):
+        c["exclude"] = e["exclude"]
 json.dump(out, open(sys.argv[1], "w", encoding="utf-8"), ensure_ascii=False, indent=1)
 print(len(out), "crops")
