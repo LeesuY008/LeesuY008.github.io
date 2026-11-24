@@ -32,6 +32,14 @@ class T(unittest.TestCase):
         self.assertEqual(match_crop("사과(후지)", crops), "apple")
         self.assertIsNone(match_crop("배추", crops))
 
+    def test_match_crop_prefers_exact_over_substring(self):
+        crops = [{"key": "pear", "aliases": ["배"]}, {"key": "napa", "aliases": ["배추"]},
+                 {"key": "pepper", "aliases": ["고추"]}, {"key": "radish", "aliases": ["무"]}]
+        self.assertEqual(match_crop("배추", crops), "napa")
+        self.assertEqual(match_crop("배(신고)", crops), "pear")
+        self.assertEqual(match_crop("청양고추", crops), "pepper")
+        self.assertIsNone(match_crop("무화과", crops))
+
     def test_farm_record_group_vs_person(self):
         g = farm_record({"생산단체명": "청송사과영농조합", "생산자명": "", "소재지": "경상북도 청송군", "품목": "사과",
                          "재배면적": "1200", "인증번호": "G1"}, "apple")

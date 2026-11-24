@@ -59,11 +59,23 @@ def mask_name(name):
 
 
 def match_crop(item_raw, crops):
-    text = item_raw or ""
+    """품목 이름 → 작물 키.
+
+    1) 괄호 앞 이름이나 괄호 안 이름이 별칭과 정확히 같으면 그 작물
+    2) 아니면 두 글자 이상 별칭 중 가장 긴 것이 포함된 작물 ("청양고추" → 고추)
+    한 글자 별칭("배", "무")은 정확히 같을 때만 쓴다. "배추", "무화과" 오인 방지.
+    """
+    text = re.sub(r"\s+", "", item_raw or "")
+    words = [w for w in re.split(r"[()\[\],/·]", text) if w]
     for crop in crops:
-        if any(a and a in text for a in crop["aliases"]):
+        if any(a in words for a in crop["aliases"]):
             return crop["key"]
-    return None
+    best, best_len = None, 0
+    for crop in crops:
+        for a in crop["aliases"]:
+            if len(a) >= 2 and a in text and len(a) > best_len:
+                best, best_len = crop["key"], len(a)
+    return best
 
 
 def _num(v):
