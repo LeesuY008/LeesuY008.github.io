@@ -487,5 +487,6 @@ const h0=location.hash.slice(1);setMode();if(!ADMIN&&SUBS[h0])tab=h0;
 addEventListener("storage",e=>{if(e.key!="hr_db")return;try{DB=Object.assign(DEF(),JSON.parse(e.newValue)||{});derive();const a=document.activeElement;if(a&&/INPUT|TEXTAREA|SELECT/.test(a.tagName))bell();else render()}catch(x){}});
 render();
 </script>
+<script src="home-badge.js" defer></script>
 </body>
 </html>
