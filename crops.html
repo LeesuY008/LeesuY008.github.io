@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>농산물 판매처 찾기</title>
+<meta name="description" content="작물별 사진, GAP 인증 산지, 직매장, 씨앗·묘목, 지역 농업기술센터 연락처">
+<style>
+  :root {
+    --bg: #f4f6f2; --card: #fff; --text: #1c211c; --muted: #66706a; --line: #e2e7e0;
+    --accent: #2f7d3b; --accent-soft: #e6f2e7; --warn: #8a5a00; --warn-soft: #fff4d9;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #131714; --card: #1c211d; --text: #e6ebe6; --muted: #9aa59c; --line: #2c342e;
+            --accent: #7cc489; --accent-soft: #233328; --warn: #f0c060; --warn-soft: #3a3120; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font-family: -apple-system, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif; }
+  .wrap { max-width: 980px; margin: 0 auto; padding: 24px 16px 60px; }
+  h1 { margin: 0 0 4px; font-size: 26px; }
+  .sub { color: var(--muted); margin: 0 0 18px; font-size: 14px; line-height: 1.5; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 18px; margin-bottom: 14px; }
+  .controls { display: grid; grid-template-columns: 1fr auto auto; gap: 8px; }
+  input, select { font: inherit; font-size: 15px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--card); color: var(--text); min-width: 0; }
+  .chips { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
+  .chip { border: 1px solid var(--line); background: var(--card); color: var(--text); padding: 7px 14px; border-radius: 999px; cursor: pointer; font-size: 14px; }
+  .chip.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(112px, 1fr)); gap: 10px; }
+  .crop { border: 1px solid var(--line); background: var(--card); border-radius: 12px; overflow: hidden; cursor: pointer; padding: 0; text-align: left; color: var(--text); font: inherit; }
+  .crop img { width: 100%; aspect-ratio: 4/3; object-fit: cover; display: block; background: var(--line); }
+  .crop span { display: block; padding: 7px 9px; font-size: 14px; font-weight: 600; }
+  .crop.active { outline: 2px solid var(--accent); }
+  .hero { display: grid; grid-template-columns: 260px 1fr; gap: 18px; }
+  .hero figure { margin: 0; }
+  .hero img { width: 100%; aspect-ratio: 4/3; object-fit: cover; border-radius: 12px; background: var(--line); }
+  .hero figcaption { font-size: 11px; color: var(--muted); margin-top: 4px; line-height: 1.4; word-break: break-all; }
+  .hero h2 { margin: 0 0 6px; font-size: 24px; }
+  .tag { display: inline-block; font-size: 12px; padding: 3px 8px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); margin: 0 4px 4px 0; }
+  h3 { margin: 0 0 10px; font-size: 17px; display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+  h3 small { font-size: 13px; color: var(--muted); font-weight: 400; }
+  .list { list-style: none; margin: 0; padding: 0; }
+  .list li { padding: 10px 0; border-bottom: 1px solid var(--line); line-height: 1.5; font-size: 14px; }
+  .list li:last-child { border-bottom: 0; }
+  .list b { font-size: 15px; }
+  .meta { color: var(--muted); font-size: 13px; }
+  a { color: var(--accent); }
+  a.tel { display: inline-block; font-weight: 700; text-decoration: none; background: var(--accent-soft); padding: 2px 8px; border-radius: 8px; margin-right: 4px; white-space: nowrap; }
+  .src { font-size: 12px; color: var(--muted); margin-top: 10px; line-height: 1.5; }
+  .empty { color: var(--muted); font-size: 14px; padding: 6px 0; }
+  .note { background: var(--warn-soft); color: var(--warn); border-radius: 10px; padding: 10px 12px; font-size: 13px; line-height: 1.5; margin-bottom: 10px; }
+  .more { margin-top: 10px; border: 1px solid var(--line); background: var(--card); color: var(--text); border-radius: 10px; padding: 9px 14px; cursor: pointer; font: inherit; font-size: 14px; }
+  .back { border: 0; background: none; color: var(--accent); cursor: pointer; font: inherit; font-size: 14px; padding: 0; margin-bottom: 10px; }
+  [hidden] { display: none !important; }
+  @media (max-width: 640px) {
+    .controls { grid-template-columns: 1fr 1fr; }
+    .controls input { grid-column: 1 / -1; }
+    .hero { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>농산물 판매처 찾기</h1>
+  <p class="sub">작물을 고르면 사진과 주산지, GAP 인증 산지, 로컬푸드 직매장, 씨앗·묘목 업체, 지역 농업기술센터 연락처를 보여줍니다.
+    개별 농가 연락처는 공개 자료에 없어서 <b>지역 문의처</b>로 연결합니다.</p>
+
+  <div class="card">
+    <div class="controls">
+      <input id="q" type="search" placeholder="작물 검색 (예: 사과, 샤인머스캣, 깻잎)" aria-label="작물 검색">
+      <select id="sido" aria-label="시·도"><option value="">전국</option></select>
+      <select id="sigungu" aria-label="시·군·구" disabled><option value="">시·군·구 전체</option></select>
+    </div>
+    <div class="chips" id="cats"></div>
+  </div>
+
+  <div id="pick" class="card"><div class="grid" id="grid"></div><p class="empty" id="noResult" hidden>찾는 작물이 없습니다.</p></div>
+
+  <div id="detail" hidden>
+    <button class="back" id="back">← 작물 목록</button>
+    <div class="card hero" id="hero"></div>
+    <div class="card" id="gapCard"></div>
+    <div class="card" id="storeCard"></div>
+    <div class="card" id="seedCard"></div>
+    <div class="card" id="contactCard"></div>
+  </div>
+  <p class="src" id="loadErr" hidden>데이터를 불러오지 못했습니다. 잠시 후 새로고침해 주세요.</p>
+</div>
+
+<script>
+const $ = (s) => document.querySelector(s);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const SIDO = { 서울: "서울특별시", 부산: "부산광역시", 대구: "대구광역시", 인천: "인천광역시", 광주: "광주광역시",
+  대전: "대전광역시", 울산: "울산광역시", 세종: "세종특별자치시", 경기: "경기도", 강원: "강원특별자치도",
+  충북: "충청북도", 충남: "충청남도", 전북: "전북특별자치도", 전남: "전라남도", 경북: "경상북도",
+  경남: "경상남도", 제주: "제주특별자치도" };
+const CATS = ["전체", "곡물", "채소", "과일", "특용작물"];
+const PAGE = 100;
+let D = {}, cat = "전체", current = null;
+
+const tel = (t) => t ? `<a class="tel" href="tel:${esc(t.replace(/-/g, ""))}">☎ ${esc(t)}</a>` : "";
+const home = (u) => u ? `<a href="${esc(u)}" target="_blank" rel="noopener">홈페이지</a>` : "";
+const region = (sido, sgg) => `${SIDO[sido] ? sido : ""}${sgg ? " " + sgg : ""}`.trim();
+const fmt = (n) => n.toLocaleString("ko-KR");
+// 받침 있으면 a, 없으면 b ("사과는", "쌀은")
+const josa = (w, a, b) => { const c = w.charCodeAt(w.length - 1) - 0xac00; return c >= 0 && c <= 11171 && c % 28 ? a : b; };
+const ha = (m2) => m2 >= 10000 ? `${fmt(Math.round(m2 / 1000) / 10)}ha` : `${fmt(m2)}㎡`;
+
+// 시·군·구 문의처가 없으면 시·도 문의처 (scripts/crop_lib.py contacts_for 와 같은 규칙)
+function contactsFor(sido, sgg) {
+  const c = D.contacts.by_region;
+  if (sgg && c[`${sido} ${sgg}`]?.length) return c[`${sido} ${sgg}`];
+  return c[sido] || [];
+}
+function firstContact(sido, sgg) {
+  const list = contactsFor(sido, sgg);
+  return list.find((x) => x.tel) || list[0];
+}
+function contactLine(x) {
+  return `${esc(x.name)} ${tel(x.tel)} ${home(x.homepage)}${x.tel ? "" : ' <span class="meta">(전화번호는 홈페이지에서 확인)</span>'}`;
+}
+
+async function load() {
+  const names = ["crops", "gap", "stores", "contacts", "nurseries"];
+  const res = await Promise.all(names.map((n) => fetch(`data/crops/${n}.json`).then((r) => {
+    if (!r.ok) throw new Error(n); return r.json(); })));
+  names.forEach((n, i) => (D[n] = res[i]));
+}
+
+function regionOptions() {
+  const keys = new Set([...Object.keys(D.contacts.by_region), ...Object.keys(D.stores.by_region)]);
+  Object.values(D.gap.by_crop).forEach((rows) => rows.forEach((r) => keys.add(region(r.sido, r.sigungu))));
+  const bySido = {};
+  keys.forEach((k) => { const [s, g] = k.split(" "); if (!SIDO[s]) return; (bySido[s] ||= new Set()); if (g) bySido[s].add(g); });
+  return bySido;
+}
+
+function renderGrid() {
+  const q = $("#q").value.trim().replace(/\s+/g, "");
+  const list = D.crops.filter((c) => (cat === "전체" || c.category === cat) &&
+    (!q || c.aliases.some((a) => a.includes(q) || q.includes(a) && a.length > 1)));
+  $("#grid").innerHTML = list.map((c) => `<button class="crop" data-key="${esc(c.key)}">
+      <img loading="lazy" src="${esc(c.photo.url)}" alt="${esc(c.name)} 사진"><span>${esc(c.name)}</span></button>`).join("");
+  $("#noResult").hidden = list.length > 0;
+}
+
+function sourceNote(meta, extra = "") {
+  const when = meta.as_of ? `기준일 ${esc(meta.as_of)} · ` : "";
+  return `<p class="src">출처: ${meta.sources.map(esc).join(", ")} · ${when}갱신 ${esc(meta.updated)}${extra}</p>`;
+}
+
+function pager(el, items, rowFn, emptyHtml) {
+  let shown = 0;
+  const ul = el.querySelector("ul"), btn = el.querySelector(".more");
+  ul.innerHTML = items.length ? "" : `<li class="empty">${emptyHtml}</li>`;
+  const more = () => {
+    ul.insertAdjacentHTML("beforeend", items.slice(shown, shown + PAGE).map(rowFn).join(""));
+    shown += PAGE;
+    btn.hidden = shown >= items.length;
+    btn.textContent = `더 보기 (${fmt(items.length - shown)}곳 남음)`;
+  };
+  btn.onclick = more;
+  btn.hidden = true;
+  if (items.length) more();
+}
+
+function renderDetail() {
+  const c = current; if (!c) return;
+  const sido = $("#sido").value, sgg = $("#sigungu").value;
+  const place = sido ? `${SIDO[sido]}${sgg ? " " + sgg : ""}` : "전국";
+
+  $("#hero").innerHTML = `<figure><img src="${esc(c.photo.url)}" alt="${esc(c.name)} 사진">
+      <figcaption>사진: ${esc(c.photo.author || "작자 미상")} · ${esc(c.photo.license)} · <a href="${esc(c.photo.page)}" target="_blank" rel="noopener">위키미디어 공용</a></figcaption></figure>
+    <div><h2>${esc(c.name)}</h2><span class="tag">${esc(c.category)}</span>
+      <p>${esc(c.desc)}</p>
+      <p class="meta">주산지 (참고용): ${c.main_regions.map((r) => `<span class="tag">${esc(SIDO[r] || r)}</span>`).join("")}</p>
+      ${c.aliases.length > 1 ? `<p class="meta">다른 이름: ${c.aliases.slice(1).map(esc).join(", ")}</p>` : ""}</div>`;
+
+  // GAP 인증 산지
+  const gap = (D.gap.by_crop[c.key] || []).filter((r) => (!sido || r.sido === sido) && (!sgg || r.sigungu === sgg));
+  const g = $("#gapCard");
+  g.innerHTML = `<h3>GAP 인증 산지 <small>${esc(place)} · ${fmt(gap.length)}개 지역 · 면적 큰 순</small></h3>
+    <p class="note">공개 자료에는 농가 이름과 전화번호가 없습니다. 지역별 인증 현황과 그 지역 농업기술센터 연락처를 함께 보여드려요. 농업기술센터에 문의하면 해당 작물 농가나 작목반을 안내받을 수 있습니다.</p>
+    <ul class="list"></ul><button class="more"></button>${sourceNote(D.gap.meta)}`;
+  pager(g, gap, (r) => {
+    const ct = firstContact(r.sido, r.sigungu);
+    return `<li><b>${esc(c.name)}</b> · ${esc(SIDO[r.sido])} ${esc(r.sigungu)}
+      <div class="meta">GAP 인증 ${fmt(r.certs)}건 · 재배면적 ${ha(r.area_m2)} · 생산계획 ${fmt(r.plan_t)}톤</div>
+      <div>${ct ? `문의: ${contactLine(ct)}` : '<span class="meta">이 지역 문의처 정보가 없습니다.</span>'}</div></li>`;
+  }, `${esc(place)}에는 ${esc(c.name)} GAP 인증 기록이 없습니다. 아래 지역 문의처에 물어보세요.`);
+
+  // 직매장
+  const s = $("#storeCard");
+  let stores = [];
+  if (sido) Object.entries(D.stores.by_region).forEach(([k, v]) => {
+    const [ks, kg] = k.split(" ");
+    if (ks === sido && (!sgg || kg === sgg)) stores = stores.concat(v.map((x) => ({ ...x, k })));
+  });
+  stores.sort((a, b) => (b.tel ? 1 : 0) - (a.tel ? 1 : 0));
+  s.innerHTML = `<h3>로컬푸드 직매장 <small>${esc(place)}${sido ? ` · ${fmt(stores.length)}곳` : ""}</small></h3>
+    <p class="meta">지역 농가가 직접 내놓는 농산물을 파는 매장입니다. 품목은 철마다 달라서 방문 전에 전화로 확인하세요.</p>
+    <ul class="list"></ul><button class="more"></button>${sourceNote(D.stores.meta, " · 전화번호는 2023년 자료라 바뀌었을 수 있습니다")}`;
+  pager(s, stores, (x) => `<li><b>${esc(x.name)}</b> ${tel(x.tel)}
+      <div class="meta">${esc(x.addr)}${x.hours ? " · " + esc(x.hours) : ""}</div></li>`,
+    sido ? `${esc(place)}에 등록된 직매장이 없습니다.` : "위에서 시·도를 고르면 그 지역 직매장이 나옵니다.");
+
+  // 씨앗·묘목
+  const seed = $("#seedCard");
+  const nurs = D.nurseries.items.filter((x) => !sido || x.sido === sido);
+  const ct = sido ? firstContact(sido, sgg) : null;
+  const what = c.seed_type === "tree" ? "묘목" : "씨앗·모종";
+  seed.innerHTML = `<h3>${what} 구하기 <small>${esc(place)}</small></h3>
+    <p class="meta">${c.seed_type === "tree"
+      ? `${esc(c.name)}${josa(c.name, "은", "는")} 묘목으로 심습니다. 품종 추천과 묘목 구입처는 지역 농업기술센터에 문의하는 것이 가장 정확합니다.`
+      : `${esc(c.name)} 씨앗·모종은 가까운 종묘상이나 농협 농자재센터에서 구할 수 있습니다. 지역 품종과 구입처는 농업기술센터에 문의하세요.`}</p>
+    ${ct ? `<p>문의: ${contactLine(ct)}</p>` : '<p class="meta">시·도를 고르면 그 지역 문의처가 나옵니다.</p>'}
+    <h3 style="margin-top:14px">정원식물·묘목 생산 업체 <small>${fmt(nurs.length)}곳</small></h3>
+    <ul class="list"></ul><button class="more"></button>${sourceNote(D.nurseries.meta, " · 정원·조경용 식물 위주")}`;
+  pager(seed, nurs, (x) => `<li><b>${esc(x.name)}</b> ${home(x.homepage)}
+      <div class="meta">${esc(x.addr)}${x.products ? " · 대표 상품: " + esc(x.products) : ""}</div></li>`,
+    `${esc(place)}에 등록된 업체가 없습니다.`);
+
+  // 문의처
+  const cc = $("#contactCard");
+  const list = sido ? contactsFor(sido, sgg) : [];
+  const upper = sido && sgg ? (D.contacts.by_region[sido] || []) : [];
+  cc.innerHTML = `<h3>지역 문의처 <small>${esc(place)}</small></h3>
+    <ul class="list"></ul><button class="more"></button>${sourceNote(D.contacts.meta)}`;
+  pager(cc, [...list, ...upper.filter((x) => !list.includes(x))], (x) => `<li><b>${esc(x.name)}</b> ${tel(x.tel)} ${home(x.homepage)}
+      <div class="meta">${esc(x.type)}${x.tel ? "" : " · 전화번호는 홈페이지에서 확인"}</div></li>`,
+    sido ? "이 지역 문의처 정보가 없습니다." : "위에서 시·도를 고르면 그 지역 농업기술센터가 나옵니다.");
+}
+
+function show(key) {
+  current = D.crops.find((c) => c.key === key) || null;
+  $("#pick").hidden = !!current;
+  $("#detail").hidden = !current;
+  if (current) { renderDetail(); window.scrollTo({ top: 0 }); }
+}
+
+function readHash() {
+  const p = new URLSearchParams(location.hash.slice(1));
+  const sido = p.get("sido") || "", sgg = p.get("sgg") || "";
+  $("#sido").value = SIDO[sido] && REG[sido] ? sido : "";
+  fillSigungu();
+  $("#sigungu").value = $("#sido").value && REG[sido].has(sgg) ? sgg : "";
+  show(p.get("crop") || "");
+}
+function writeHash() {
+  const p = new URLSearchParams();
+  if (current) p.set("crop", current.key);
+  if ($("#sido").value) p.set("sido", $("#sido").value);
+  if ($("#sigungu").value) p.set("sgg", $("#sigungu").value);
+  history.replaceState(null, "", "#" + p.toString());
+}
+
+let REG = {};
+function fillSigungu() {
+  const s = $("#sido").value, sel = $("#sigungu");
+  sel.innerHTML = '<option value="">시·군·구 전체</option>' +
+    [...(REG[s] || [])].sort((a, b) => a.localeCompare(b, "ko")).map((g) => `<option>${esc(g)}</option>`).join("");
+  sel.disabled = !s;
+}
+
+(async () => {
+  try { await load(); } catch (e) { $("#loadErr").hidden = false; return; }
+  REG = regionOptions();
+  $("#sido").insertAdjacentHTML("beforeend", Object.keys(SIDO).filter((s) => REG[s])
+    .map((s) => `<option value="${s}">${SIDO[s]}</option>`).join(""));
+  $("#cats").innerHTML = CATS.map((c) => `<button class="chip${c === cat ? " active" : ""}">${c}</button>`).join("");
+  $("#cats").onclick = (e) => {
+    if (!e.target.matches(".chip")) return;
+    cat = e.target.textContent;
+    $("#cats").querySelectorAll(".chip").forEach((b) => b.classList.toggle("active", b === e.target));
+    show(""); renderGrid(); writeHash();
+  };
+  $("#q").oninput = () => { show(""); renderGrid(); writeHash(); };
+  $("#grid").onclick = (e) => { const b = e.target.closest(".crop"); if (b) { show(b.dataset.key); writeHash(); } };
+  $("#back").onclick = () => { show(""); writeHash(); };
+  $("#sido").onchange = () => { fillSigungu(); renderDetail(); writeHash(); };
+  $("#sigungu").onchange = () => { renderDetail(); writeHash(); };
+  renderGrid();
+  readHash();
+  window.addEventListener("hashchange", readHash);
+})();
+</script>
+</body>
+</html>
