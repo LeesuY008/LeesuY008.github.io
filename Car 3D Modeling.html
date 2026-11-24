@@ -82,6 +82,9 @@
   .stage.real .credit { display: block; }
   button:disabled { opacity: .45; cursor: not-allowed; }
   .sf a, .market a { color: var(--accent); }
+  .sw.orig { background: conic-gradient(#e8e8e8 0 25%, #1f3f66 0 50%, #8e1b1f 0 75%, #121417 0) !important; }
+  .sw:disabled { opacity: .3; cursor: not-allowed; }
+  .linkbtn { border: 0; background: none; padding: 0; color: var(--accent); font-size: 12.5px; text-decoration: underline; cursor: pointer; }
   .market .badge { display: inline-block; font-size: 12px; font-weight: 600; border-radius: 999px; padding: 1px 8px; margin-right: 4px; }
   .market .badge.new { background: var(--accent-soft); color: var(--accent); }
   .market .badge.used { background: #f4ebe3; color: #8a4b1f; }
@@ -124,6 +127,8 @@
       </div>
       <div class="row"><select id="gen" aria-label="세대"></select></div>
       <div class="swatches" id="colors"></div>
+      <p class="hint" id="colorNote"></p>
+      <button class="linkbtn" id="pickBody" hidden>차체 부위 직접 지정</button>
       <div class="spec" id="spec"></div>
     </section>
 
@@ -1418,7 +1423,87 @@ function setMode(m, note) {
   if (m !== 'proc' && shown.cargo) { shown.cargo = false; applyMarks(); }
   if (m === 'real' && controls.autoRotate) { controls.autoRotate = false; document.getElementById('tSpin').classList.remove('on'); }
   modelNote.textContent = note ?? (m === 'proc' ? '치수만 반영한 단순 모델입니다.' : '');
+  if (typeof updateSwatches === 'function' && colorsEl) updateSwatches();
 }
+
+// ---------- 실제 모델 색상: 차체(도장) 재질을 이름으로 찾아 색을 바꿈 ----------
+const PAINT_RX = /car ?_?paint|carpaint|paint|pintura|(^|[^a-z])body([^a-z]|$)|body_?col|bodycolor|exterior_?colou?r|ext_?colou?r|clear ?coat|(^|_)exterior$|shell/i;
+// 이름 규칙으로 못 찾는 모델의 차체 재질 (모델 uid → 재질 이름)
+const PAINT_OVERRIDE = {
+  '950d36030fe1468aa9033d5edfc9550c': ['M_2020_Mercedes_Benz_GLC300_RedMain1'],          // GLC X253
+  '8d16325eb7974a948627b3cd77f30f52': ['h:Hyundai_Ioniq5NRewardRecycled_2023Paint_Material1'], // 아이오닉 5 (빨간 포인트 줄무늬 제외)
+};
+const PAINT_NOT = /glass|window|tire|tyre|rim|wheel|chrome|light|lamp|interior|^int_|seat|leather|plastic|mirror|grill|logo|badge|emblem|plate|brake|disc|caliper|carbon|shadow|floor|ground|decal|dash|carpet|fabric|black|trim|under|chassis|engine|stitch|caliper|matte_?glass/i;
+const srgbToLin = v => v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+async function setupPaint(api, token) {
+  let mats = [];
+  try { mats = await sfCall(api, 'getMaterialList'); } catch {}
+  if (token !== sfToken || !sf) return;
+  const ov = PAINT_OVERRIDE[sf.uid];
+  sf.mats = mats;
+  setPaint(mats.filter(m => ov ? ov.includes(m.name) : PAINT_RX.test(m.name) && !PAINT_NOT.test(m.name)));
+  // 이름으로 못 찾는 모델은 사용자가 차체를 클릭해 재질을 지정
+  api.addEventListener('click', info => onModelPick(info), { pick: 'slow' });
+  updateSwatches();
+}
+function setPaint(list) {
+  sf.paint = list;
+  sf.paintOrig = list.map(m => JSON.parse(JSON.stringify(m)));
+}
+function onModelPick(info) {
+  if (!sf || !sf.pickMode || !info || !info.material) return;
+  const m = (sf.mats || []).find(x => x.name === info.material.name) || info.material;
+  if (sf.paint && sf.paint.length) sf.paintOrig.forEach(o => sf.api.setMaterial(JSON.parse(JSON.stringify(o))));  // 이전 지정 되돌림
+  setPaint([m]);
+  sf.pickMode = false;
+  if (sf.pendingColor != null) paintSF(sf.pendingColor);
+  updateSwatches(`'${m.name}' 부위를 차체로 지정했습니다. 다른 부위가 바뀌었다면 '차체 부위 직접 지정'으로 다시 고르세요.`);
+}
+function paintSF(hex) {
+  if (!sf || !sf.paint) return false;
+  if (!sf.paint.length) {                       // 아직 차체를 모르면 색을 기억해 두고 클릭을 기다림
+    if (hex === null) { sf.pickMode = false; updateSwatches(); return true; }
+    sf.pendingColor = hex; sf.pickMode = true;
+    updateSwatches('이제 화면에서 차체(문이나 보닛)를 한 번 클릭하면 그 부위 색이 바뀝니다.');
+    return true;
+  }
+  sf.pendingColor = hex;
+  if (hex === null) { sf.paintOrig.forEach(m => sf.api.setMaterial(JSON.parse(JSON.stringify(m)))); return true; }
+  const lin = [(hex >> 16) & 255, (hex >> 8) & 255, hex & 255].map(v => srgbToLin(v / 255));
+  sf.paint.forEach((m, i) => {
+    const mm = JSON.parse(JSON.stringify(sf.paintOrig[i])), c = mm.channels;
+    for (const k of ['AlbedoPBR', 'DiffusePBR', 'DiffuseColor']) {
+      if (!c[k]) continue;
+      c[k].color = lin; c[k].factor = 1; delete c[k].texture;   // 색이 텍스처에 덮이지 않도록 텍스처를 뺌
+    }
+    sf.api.setMaterial(mm);
+  });
+  return true;
+}
+// 지금 모드에서 색을 바꿀 수 있는지에 따라 버튼과 안내를 맞춤
+function updateSwatches(msgOverride) {
+  const note = document.getElementById('colorNote'), pick = document.getElementById('pickBody');
+  let ok = true, msg = '';
+  pick.hidden = true;
+  if (mode === 'glb') { ok = false; msg = '불러온 GLB 모델은 색상 변경을 지원하지 않습니다.'; }
+  else if (mode === 'real') {
+    if (!sf || !sf.paint) { ok = false; msg = '실제 모델의 차체 재질을 확인하는 중…'; }
+    else {
+      pick.hidden = false;
+      msg = sf.paint.length
+        ? '실제 모델의 차체 색을 바꿉니다. 첫 번째 버튼은 원래 색입니다.'
+        : '이 모델은 차체 재질 이름을 알 수 없습니다. 색을 고른 뒤 화면에서 차체를 한 번 클릭하세요.';
+    }
+  }
+  colorsEl.querySelectorAll('.sw').forEach(b => { b.disabled = !ok; });
+  note.textContent = msgOverride || msg;
+}
+document.getElementById('pickBody').onclick = () => {
+  if (!sf) return;
+  sf.pickMode = true;
+  if (sf.pendingColor == null) sf.pendingColor = 0x8e1b1f;
+  updateSwatches('화면에서 차체(문이나 보닛)를 한 번 클릭하세요. 고른 색이 그 부위에 적용됩니다.');
+};
 
 // ---------- 실제 모델: Sketchfab 뷰어 삽입 ----------
 const sfCall = (api, fn, ...args) => new Promise((res, rej) => api[fn](...args, (err, v) => err ? rej(err) : res(v)));
@@ -1601,7 +1686,9 @@ function startReal(sel) {
       api.start();
       api.addEventListener('viewerready', async () => {
         if (token !== sfToken) return;
-        sf = { api, uid, calib: null };
+        sf = { api, uid, calib: null, paint: null };
+        pickSwatch(colorsEl.querySelector('.sw.orig'));
+        setupPaint(api, token);
         // 작성자가 걸어 둔 카메라 제한(좌우 회전 범위·최소 거리)을 풀어 360도 돌려 볼 수 있게 함
         try { await sfCall(api, 'setEnableCameraConstraints', false, {}); } catch {}
         if (!CALIB_OK.has(uid)) {
@@ -1704,13 +1791,16 @@ brandSel.onchange = () => { fillModels(); selectCar(); };
 modelSel.onchange = selectCar;
 
 const colorsEl = document.getElementById('colors');
-COLORS.forEach(([label, hex], i) => {
+const PROC_DEFAULT = 0x1f3f66;
+function pickSwatch(b) { colorsEl.querySelectorAll('.sw').forEach(x => x.classList.toggle('on', x === b)); }
+[['원래 색', null], ...COLORS].forEach(([label, hex], i) => {
   const b = document.createElement('button');
-  b.className = 'sw' + (i === 4 ? ' on' : ''); b.title = label; b.setAttribute('aria-label', label);
-  b.style.background = '#' + hex.toString(16).padStart(6, '0');
+  b.className = 'sw' + (hex === null ? ' orig on' : ''); b.title = label; b.setAttribute('aria-label', label);
+  if (hex !== null) b.style.background = '#' + hex.toString(16).padStart(6, '0');
   b.onclick = () => {
-    MAT.paint.color.setHex(hex);
-    colorsEl.querySelectorAll('.sw').forEach(x => x.classList.toggle('on', x === b));
+    if (mode === 'real') { if (!paintSF(hex)) return; }
+    else MAT.paint.color.setHex(hex ?? PROC_DEFAULT);
+    pickSwatch(b);
   };
   colorsEl.appendChild(b);
 });
