@@ -1179,13 +1179,13 @@ async function loadInfo(brand, name) {
   }
 }
 
-// ---------- 차종별 무료 3D 모델 (Sketchfab, 2026-11-24 검색) ----------
-// [uid, 모델 이름, 작성자, 라이선스, GLB 용량(MB), 비고]  null = 쓸 만한 무료 모델 없음
+// ---------- 차종별 무료 3D 모델 (Sketchfab, 2026-11-24·25 검색) ----------
+// [uid, 모델 이름, 작성자, 라이선스, GLB 용량(MB, 0 = 다운로드 불가·보기 전용), 비고]
 const SF = {
   '캐스퍼': ['756bda485fc840babe274997874dde1a', '2023 Hyundai Casper', 'tonielpro520', 'CC BY', 55, ''],
   '아반떼': ['19ea8faf080140429e83fc6968fcfae1', '2021 Hyundai Elantra', 'koelkastasbers', 'Free Standard', 21, '부분변경 전 디자인'],
   '쏘나타 디 엣지': ['1fbb3fb20c274f1a96c03aecedfcd047', '2017 Hyundai Sonata', 'm3ika3D', 'Free Standard', 4, '이전 세대(LF)'],
-  '그랜저': null,
+  '그랜저': ['9ca88cfa74934a2788e498f9c4928a68', '2016 Hyundai Azera', 'Nikola3D', 'Editorial', 0, '이전 세대(해외명 아제라), 보기 전용'],
   '코나': ['26c27a6e061d4776b750e483b933df79', '2025 Hyundai Kona N Line', 'ddiaz-design', 'CC BY-NC-SA', 30, ''],
   '투싼': ['48b4df148c3a4ec2875ab082c197b42f', '2025 Hyundai Tucson Plug-In Hybrid', 'ddiaz-design', 'CC BY-NC-SA', 22, ''],
   '싼타페': ['a1ee29b80c844b13ba56ac7e28971a53', '2024 Hyundai Santa Fe', 'koelkastasbers', 'Free Standard', 28, ''],
@@ -1208,17 +1208,19 @@ const SF = {
   '타스만': ['92d38904aa384014a064678bf4976122', 'Kia Tasman', 'MattDoesBlender', 'CC BY-NC-SA', 49, ''],
   'G70': ['509a72789a224bc894944638fc602426', 'Genesis G70', 'niev', 'CC BY', 35, '연식 표기 없음'],
   'G80': ['e9abf10cfee04ea480951d3c2f71f060', 'Genesis G80', 'niev', 'CC BY', 105, '용량이 커서 로딩이 느림'],
-  'G90': null, 'GV60': null, 'GV70': null,
+  'G90': ['26e168629b4948a490be652981ae1c41', 'Genesis G90 2020', 'SQUIR3D', 'Editorial', 0, '이전 세대, 보기 전용'],
+  'GV60': ['c58f79b18b864af2b3111ee8806d78c2', 'GV60 Matte', 'Kanvas_Studio', 'CC BY', 0, ''],
+  'GV70': ['f5d4aa1e7af74d0a9ab7ae6ee0dad0cf', 'Genesis GV70 Sport 2020', 'SQUIR3D', 'Editorial', 0, '부분변경 전 디자인, 보기 전용'],
   'GV80': ['3486b7b7a25541498032cd1281de37fe', 'Genesis GV80 2021', 'ovaiskhan.244', 'CC BY', 33, '부분변경 전 디자인'],
   '티볼리': ['805ee9bb23fc4a869b3490e17ec06ec3', '2015 Ssangyong Tivoli', 'tonielpro520', 'CC BY', 61, '이전 디자인'],
-  '액티언': null,
+  '액티언': ['426b79e7db554ea5bdc9fab3a782508d', 'KGM Actyon', 'teenlin3', 'CC BY', 0, 'AI로 생성된 모델이라 형태가 거침'],
   '토레스': ['64ec9054a55540f6bb8be76237e56eb7', 'SsangYong Torres 2023', 'niev', 'CC BY', 58, ''],
   '렉스턴': ['a424dad4bda7493ba440d51c651e0e83', '2011 Ssangyong Rexton', 'tonielpro520', 'CC BY', 18, '이전 세대(2011)'],
-  '렉스턴 스포츠': null,
+  '렉스턴 스포츠': ['7592a873e30542beb0b5bef4d22ac29d', 'SsangYong Musso 2020', 'teenlin3', 'CC BY', 0, '해외명 무쏘, AI로 생성된 모델'],
   '아르카나': ['b28e3bd3a038423b9d1a5c27cc45087f', '2019 Renault Arkana', 'tonielpro520', 'CC BY', 13, '러시아형 아르카나라 국내 모델과 다른 차'],
-  '그랑 콜레오스': null,
+  '그랑 콜레오스': ['50664db9232c4456b4fc6315aa2349b1', 'Renault Koleos 2025', 'DE-piction', '보기 전용', 0, '게임용 단순 모델'],
   '트랙스 크로스오버': ['b8fe37143d574d199794429f60974bc0', 'Chevrolet Trax (2024)', 'geyges', 'Free Standard', 10, ''],
-  '트레일블레이저': null,
+  '트레일블레이저': ['61bfc85b4f654020abf6000f54a3f81a', 'Chevrolet Trailblazer', 'Romich81', '보기 전용', 0, ''],
   '5시리즈': ['c2910a4e0d154f2ebdc41e6265eaaac3', 'BMW 5-Series Sedan (G30) LCI', 'Car2022', 'CC BY', 7, '이전 세대(G30)'],
   'X5': ['b453ba441ff04f9290955d09c3d46b9f', '2024 BMW X5 xDrive40i', 'ddiaz-design', 'CC BY-NC-SA', 22, ''],
   'E-클래스': ['f61d8efb0b9b4c499fc66fcf35a4d09c', 'Mercedes-AMG E 63 S (W213)', 'Car2022', 'CC BY', 19, '이전 세대(W213)'],
@@ -1231,7 +1233,7 @@ const SF = {
 // 앞뒤 자동 판정이 반대로 나오는 모델(화면으로 확인해 지정)
 const SF_FLIP = new Set(['아반떼', '스타리아']);
 // 자동 측정이 불안정한 모델: 작성자 기본 시점으로만 보여 주고 카메라 프리셋은 끔
-const SF_NOCAM = new Set(['G80', 'GV80', '토레스', '타스만', '아이오닉 6']);
+const SF_NOCAM = new Set(['G80', 'GV70', 'GV80', '토레스', '타스만', '아이오닉 6', '트레일블레이저', '렉스턴 스포츠', '그랑 콜레오스']);
 const sfEl = document.getElementById('sfModel');
 const modelNote = document.getElementById('modelNote');
 const flipBtn = document.getElementById('flipBtn');
@@ -1279,6 +1281,7 @@ function stopSF() {
   sfStatus.classList.remove('show');
 }
 function sfReady() { return mode === 'real' && sf && sf.calib; }
+if (/[?&]debug\b/.test(location.search)) window.__sfdbg = () => ({ sf, sfCall });   // 점검용 (?debug)
 
 // ---- 벡터 도우미 ----
 const AX = [[1, 0, 0], [0, 1, 0], [0, 0, 1]];
@@ -1391,6 +1394,7 @@ async function calibrate(api) {
     } else if (r2 && !r) r = r2;
   }
   if (!r) throw new Error('not enough hits');
+  r.cam0 = cam;   // 작성자의 처음 카메라 (로딩 중 되돌아가는지 판별용)
   // 옆에서 한 번 더 측정: 바닥판이 옆선으로만 보여 거의 안 맞으므로 전장과 바퀴 접지 높이가 안정적으로 나옴
   try {
     const R = cross(r.F, r.U), tgt = add(r.c, r.U, dot(t, r.U));
@@ -1447,7 +1451,13 @@ function startReal(name) {
       api.addEventListener('viewerready', async () => {
         if (token !== sfToken) return;
         sf = { api, uid, calib: null };
+        // 작성자가 걸어 둔 카메라 제한(좌우 회전 범위·최소 거리)을 풀어 360도 돌려 볼 수 있게 함
+        try { await sfCall(api, 'setEnableCameraConstraints', false, {}); } catch {}
         if (SF_NOCAM.has(name)) {
+          // 작성자 시점이 너무 가까우면 돌릴 때 차 안으로 들어가므로 모델 전체가 보이도록 다시 맞춤
+          try { await sfCall(api, 'recenterCamera'); } catch {}
+          await wait(1200);
+          try { await sfCall(api, 'setEnableCameraConstraints', false, {}); } catch {}
           sfStatus.classList.remove('show');
           setMode('real', '이 모델은 작성자가 정한 기본 시점으로 보여 줍니다. 카메라 프리셋은 지원하지 않으며 마우스로 돌려 볼 수 있습니다.');
           return;
@@ -1468,10 +1478,15 @@ function startReal(name) {
         if (sf.calib) {
           // 큰 모델은 텍스처를 마저 불러오면서 카메라를 처음 위치로 되돌리는 경우가 있어, 사용자가 움직이지 않았으면 한 번 더 이동
           runCommand('<rotate: overall (full, eye-level, medium)>');
-          const n = sf.flies;
-          let n2 = -1;
-          setTimeout(() => { if (token === sfToken && sf && sf.flies === n) { runCommand('<rotate: overall (full, eye-level, medium)>'); n2 = sf.flies; } }, 1800);
-          setTimeout(() => { if (token === sfToken && sf && sf.flies === n2) runCommand('<rotate: overall (full, eye-level, medium)>'); }, 4500);
+          // 다시 이동은 카메라가 작성자의 처음 위치로 되돌아가 있을 때만 (사용자가 돌린 것은 덮어쓰지 않음)
+          const reset = async () => {
+            if (token !== sfToken || !sf || !sf.calib) return false;
+            const c = await sfCall(api, 'getCameraLookAt').catch(() => null), c0 = sf.calib.cam0;
+            if (!c || !c0) return false;
+            const D0 = Math.hypot(...add(c0.position, c0.target, -1));
+            return Math.hypot(...add(c.position, c0.position, -1)) < D0 * 0.05;
+          };
+          for (const ms of [1800, 4500]) setTimeout(async () => { if (await reset()) runCommand('<rotate: overall (full, eye-level, medium)>'); }, ms);
         }
       });
     },
