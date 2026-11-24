@@ -81,7 +81,11 @@
     background: rgba(255,255,255,.85); border-radius: 6px; padding: 3px 8px; text-decoration: none; display: none; }
   .stage.real .credit { display: block; }
   button:disabled { opacity: .45; cursor: not-allowed; }
-  .sf a { color: var(--accent); }
+  .sf a, .market a { color: var(--accent); }
+  .market .badge { display: inline-block; font-size: 12px; font-weight: 600; border-radius: 999px; padding: 1px 8px; margin-right: 4px; }
+  .market .badge.new { background: var(--accent-soft); color: var(--accent); }
+  .market .badge.used { background: #f4ebe3; color: #8a4b1f; }
+  .market .links { margin-top: 6px; display: flex; gap: 12px; flex-wrap: wrap; }
   .sf .warn { color: var(--warn); }
   .file { position: relative; display: flex; align-items: center; justify-content: center; font-size: 14px;
     border: 1px solid var(--accent); color: var(--accent); background: var(--accent-soft); border-radius: 8px;
@@ -118,8 +122,14 @@
         <select id="brand" aria-label="제조사"></select>
         <select id="model" aria-label="차종"></select>
       </div>
+      <div class="row"><select id="gen" aria-label="세대"></select></div>
       <div class="swatches" id="colors"></div>
       <div class="spec" id="spec"></div>
+    </section>
+
+    <section>
+      <h2>신차 · 중고차 정보</h2>
+      <div class="spec market" id="market"></div>
     </section>
 
     <section>
@@ -212,7 +222,7 @@ const CARS = {
   '현대': [
     ['캐스퍼', 'light', 3595, 1595, 1575, 2400, { lamp: 'round', tail: 'split', shape: { A: .84, B: .72, clad: true } }],
     ['아반떼', 'sedan', 4710, 1825, 1420, 2720, { shape: { D: .17 } }],
-    ['쏘나타 디 엣지', 'sedan', 4910, 1860, 1445, 2840, { shape: { D: .15, C: .37 } }],
+    ['쏘나타', 'sedan', 4910, 1860, 1445, 2840, { shape: { D: .15, C: .37 } }],
     ['그랜저', 'sedan', 5035, 1880, 1460, 2895, { chrome: true }],
     ['코나', 'hatch', 4350, 1825, 1580, 2660, { grille: 'none' }],
     ['투싼', 'suv', 4630, 1865, 1665, 2755, { lamp: 'split' }],
@@ -1131,17 +1141,32 @@ function fillModels() {
   modelSel.innerHTML = '';
   CARS[brandSel.value].forEach((r, i) => modelSel.add(new Option(r[0], i)));
 }
+const genSel = document.getElementById('gen');
 function selectCar() {
   clearTimeout(playing); cap.classList.remove('show');
   clearGLB(); stopSF();
   const rec = CARS[brandSel.value][+modelSel.value];
   buildCar(brandSel.value, rec);
   loadInfo(brandSel.value, rec[0]);
-  showSF(rec[0]);
-  if (preferReal && SF[rec[0]]) startReal(rec[0]);
+  genSel.innerHTML = '';
+  gensOf(rec[0]).forEach(([code, years], i) => genSel.add(new Option(`${code} · ${years}${i === 0 ? ' (신차)' : ' (중고)'}`, i)));
+  genSel.disabled = genSel.options.length < 2;
+  selectGen();
+}
+const curSel = () => resolveGen(CARS[brandSel.value][+modelSel.value][0], +genSel.value || 0);
+function selectGen() {
+  clearTimeout(playing); cap.classList.remove('show');
+  clearGLB(); stopSF();
+  const sel = curSel();
+  const type = CARS[brandSel.value][+modelSel.value][1];
+  document.getElementById('carSub').textContent = `${TYPE_LABEL[type]} · ${sel.code} (${sel.years})${sel.current ? ' · 신차' : ' · 중고차'}`;
+  showSF(sel);
+  showMarket(brandSel.value, sel);
+  if (preferReal && sel.uid) startReal(sel);
   else setMode('proc');
   flyTo(cameraPose('overall', 'full', 'eye-level'), 900);
 }
+genSel.onchange = selectGen;
 
 // ---------- 차량 정보 (위키백과) ----------
 const WIKI_BRAND = { '르노코리아': '르노' };
@@ -1184,7 +1209,7 @@ async function loadInfo(brand, name) {
 const SF = {
   '캐스퍼': ['756bda485fc840babe274997874dde1a', '2023 Hyundai Casper', 'tonielpro520', 'CC BY', 55, ''],
   '아반떼': ['19ea8faf080140429e83fc6968fcfae1', '2021 Hyundai Elantra', 'koelkastasbers', 'Free Standard', 21, '부분변경 전 디자인'],
-  '쏘나타 디 엣지': ['1fbb3fb20c274f1a96c03aecedfcd047', '2017 Hyundai Sonata', 'm3ika3D', 'Free Standard', 4, '이전 세대(LF)'],
+  '쏘나타': ['1fbb3fb20c274f1a96c03aecedfcd047', '2017 Hyundai Sonata', 'm3ika3D', 'Free Standard', 4, '이전 세대(LF)'],
   '그랜저': ['9ca88cfa74934a2788e498f9c4928a68', '2016 Hyundai Azera', 'Nikola3D', 'Editorial', 0, '이전 세대(해외명 아제라), 보기 전용'],
   '코나': ['26c27a6e061d4776b750e483b933df79', '2025 Hyundai Kona N Line', 'ddiaz-design', 'CC BY-NC-SA', 30, ''],
   '투싼': ['48b4df148c3a4ec2875ab082c197b42f', '2025 Hyundai Tucson Plug-In Hybrid', 'ddiaz-design', 'CC BY-NC-SA', 22, ''],
@@ -1234,6 +1259,116 @@ const SF = {
 const SF_FLIP = new Set(['아반떼', '스타리아']);
 // 자동 측정이 불안정한 모델: 작성자 기본 시점으로만 보여 주고 카메라 프리셋은 끔
 const SF_NOCAM = new Set(['G80', 'GV70', 'GV80', '토레스', '타스만', '아이오닉 6', '트레일블레이저', '렉스턴 스포츠', '그랑 콜레오스']);
+
+// ---------- 세대별 모델 ----------
+// 세대별로 추가한 모델 정보 [이름, 작성자, 라이선스, 비고]
+const EXTRA = {
+  '3fa9a81188344d53b7e2bb893082a3d7': ['Hyundai Sonata 2024', 'niev', 'CC BY', '도장 없이 회색으로 보임'],
+  'd76ad62a69dd4dbd9140688d3a95bd2b': ['Hyundai Sonata US N-Line 2020', 'SQUIR3D', 'Editorial', '보기 전용'],
+  '5de0724147a7495990cdab4f9e0f6e75': ['Hyundai Elantra 2019', 'SQUIR3D', 'Editorial', '해외명 엘란트라, 보기 전용'],
+  'da9653173c984ad3b8b60b01f1abf13b': ['2014 Hyundai Elantra SE', 'SanjithArivoli', 'CC BY', '해외명 엘란트라'],
+  'aec7856bb47c464cbff60986c158b56d': ['Hyundai Kona N-Line 2021', 'SQUIR3D', 'Editorial', '보기 전용'],
+  '083239aa52264c4bb04f4a207ffac86d': ['Hyundai Tucson N-Line 2019', 'SQUIR3D', 'Editorial', '보기 전용'],
+  '72b04d8695464c159564bf11d152a38a': ['Hyundai ix35 Tucson 2011', 'niev', 'CC BY', ''],
+  'bd113899fac446d4a4f401c459ebbb94': ['Hyundai SantaFe 2019', 'SQUIR3D', 'Editorial', '보기 전용'],
+  '0cd483437f464f00b0d892d4cf31e479': ['Hyundai Starex 2018', 'beastblox124', 'CC BY', '도장 없이 흰색으로 보임'],
+  '9786de51f22741f38e7bdc5a0e19bc25': ['2012 Kia Picanto', 'tonielpro520', 'CC BY', '해외명 피칸토'],
+  '1b3088c59bd948e5b2299186f4cc04c9': ['Kia Optima 2019', 'SQUIR3D', 'Editorial', '해외명 옵티마, 보기 전용'],
+  'd8b61b99a62944dd8b1974efb83e3d68': ['2011 Kia Optima', 'ActsOfDoge', 'Free Standard', '해외명 옵티마, 단순 모델'],
+  '32366d07cb674fc1b7a181308c75db70': ['Kia Cadenza 2020', 'SQUIR3D', 'Editorial', '해외명 카덴자, 보기 전용'],
+  '70128819492443f390ddad37cf0aea8b': ['Kia Sportage 2019', 'SQUIR3D', 'Editorial', '보기 전용'],
+  'f15205a444fb42f7a2ebf6765a36026a': ['Kia Sportage (SL 2011-2014)', 'farhad.Guli', 'CC BY', ''],
+  'f27d7066d26f4675be879f1facacd67d': ['Kia Sorento 2019', 'SQUIR3D', 'Editorial', '보기 전용'],
+  'b3198efa87e04e87931ebca9b92fb3e9': ['Kia Sedona 2019', 'SQUIR3D', 'Editorial', '해외명 세도나, 보기 전용'],
+  '855c464351f244cbaafa8269a5d472df': ['Kia Carnival 2011', 'Doz3', 'CC BY', ''],
+  '1215afceaf8d47dd97d827c0a63c8f6b': ['Ssang Yong Rexton 2018', 'teenlin3', 'CC BY', 'AI로 생성된 모델'],
+  '76e12f46be1743c591ac01544fb97399': ['Chevrolet Trax 2021', 'ItsDiyor', 'CC BY', ''],
+  'ee328c2302494193a05cb4949b17ae55': ['2024 BMW G60', 'SLGA', '보기 전용', ''],
+  '9eac54389f0541aba2dfd9c30d1cd5b7': ['BMW 5-Series F10 2010-2017', 'Merc_TV', 'CC BY', ''],
+  'a2e7d663902e4be7bd170fdb9f333ad8': ['2015 BMW X5', 'ddiaz-design', 'CC BY-NC-SA', ''],
+  '471ae365d79c488399ec04ca2c5bc51b': ['2024 Mercedes-Benz E-Class AMG Line', 'NazhDesign', '보기 전용', ''],
+  'e86ac95cbfa1448b8246950450757a0d': ['2009 Mercedes E-Class W212', 'Res1n', 'CC BY', ''],
+  '8f74d836e6c74d9883aadf9001bed546': ['2023 Mercedes-Benz GLC', 'NazhDesign', '보기 전용', ''],
+  '61ddcbdbd3854c239e0c95bf60b00022': ['2024 Tesla Model 3 + Interior', 'tonielpro520', 'CC BY', ''],
+  'e0f703b823e74746b40634d1876f6a13': ['Tesla Model Y 2021', 'SQUIR3D', 'Editorial', '보기 전용'],
+};
+// uid → [이름, 작성자, 라이선스, 비고]
+const MODEL = {};
+Object.values(SF).forEach(m => { if (m) MODEL[m[0]] = [m[1], m[2], m[3], m[5] || '']; });
+Object.assign(MODEL, EXTRA);
+// 세대가 정해지면서 필요 없어진 '이전 세대' 비고 정리
+const FIX_NOTE = {
+  '1fbb3fb20c274f1a96c03aecedfcd047': '', '9ca88cfa74934a2788e498f9c4928a68': '해외명 아제라, 보기 전용',
+  '134d29397b6d42a8a1604e8c2bbbc458': '', '26e168629b4948a490be652981ae1c41': '보기 전용',
+  'c2910a4e0d154f2ebdc41e6265eaaac3': '', 'f61d8efb0b9b4c499fc66fcf35a4d09c': '고성능 AMG 모델',
+  '950d36030fe1468aa9033d5edfc9550c': '', '6bd2ab6e23a545858d5c98c995528067': '', 'a424dad4bda7493ba440d51c651e0e83': '',
+};
+Object.entries(FIX_NOTE).forEach(([u, n]) => { if (MODEL[u]) MODEL[u][3] = n; });
+// 47개 차종 점검에서 자동 방향 측정까지 확인한 모델만 카메라 프리셋 사용
+const CALIB_OK = new Set(Object.entries(SF).filter(([n, m]) => m && !SF_NOCAM.has(n)).map(([, m]) => m[0]));
+const FLIP_UID = new Set([...SF_FLIP].map(n => SF[n][0]));
+const S_ = n => SF[n] ? SF[n][0] : null;
+// 세대: [세대 이름, 국내 판매 기간, 모델 uid | null]. 첫 줄이 현행(신차), 나머지는 단종(중고차)
+const GENS = {
+  '캐스퍼': [['AX1', '2021~', S_('캐스퍼')]],
+  '아반떼': [['CN7', '2020~', S_('아반떼')], ['AD', '2015~2020', '5de0724147a7495990cdab4f9e0f6e75'], ['MD', '2010~2015', 'da9653173c984ad3b8b60b01f1abf13b']],
+  '쏘나타': [['DN8 부분변경 (디 엣지)', '2023~', '3fa9a81188344d53b7e2bb893082a3d7'], ['DN8', '2019~2023', 'd76ad62a69dd4dbd9140688d3a95bd2b'], ['LF', '2014~2019', S_('쏘나타')], ['YF', '2009~2014', null]],
+  '그랜저': [['GN7', '2022~', null], ['IG', '2016~2022', null], ['HG', '2011~2016', S_('그랜저')]],
+  '코나': [['SX2', '2023~', S_('코나')], ['OS', '2017~2023', 'aec7856bb47c464cbff60986c158b56d']],
+  '투싼': [['NX4', '2020~', S_('투싼')], ['TL', '2015~2020', '083239aa52264c4bb04f4a207ffac86d'], ['LM (ix35)', '2009~2015', '72b04d8695464c159564bf11d152a38a']],
+  '싼타페': [['MX5', '2023~', S_('싼타페')], ['TM', '2018~2023', 'bd113899fac446d4a4f401c459ebbb94'], ['DM', '2012~2018', null]],
+  '팰리세이드': [['LX3', '2025~', null], ['LX2', '2018~2025', S_('팰리세이드')]],
+  '아이오닉 5': [['NE', '2021~', S_('아이오닉 5')]],
+  '아이오닉 6': [['CE', '2022~', S_('아이오닉 6')]],
+  '아이오닉 9': [['ME', '2025~', S_('아이오닉 9')]],
+  '스타리아': [['US4', '2021~', S_('스타리아')], ['그랜드 스타렉스', '2007~2021', '0cd483437f464f00b0d892d4cf31e479']],
+  '모닝': [['JA', '2017~', S_('모닝')], ['TA', '2011~2017', '9786de51f22741f38e7bdc5a0e19bc25']],
+  '레이': [['TAM', '2011~', S_('레이')]],
+  'K5': [['DL3', '2019~', S_('K5')], ['JF', '2015~2019', '1b3088c59bd948e5b2299186f4cc04c9'], ['TF', '2010~2015', 'd8b61b99a62944dd8b1974efb83e3d68']],
+  'K8': [['GL3', '2021~', S_('K8')], ['K7 (YG)', '2016~2021', '32366d07cb674fc1b7a181308c75db70']],
+  '셀토스': [['SP2', '2019~', S_('셀토스')]],
+  '스포티지': [['NQ5', '2021~', S_('스포티지')], ['QL', '2015~2021', '70128819492443f390ddad37cf0aea8b'], ['SL', '2010~2015', 'f15205a444fb42f7a2ebf6765a36026a']],
+  '쏘렌토': [['MQ4', '2020~', S_('쏘렌토')], ['UM', '2014~2020', 'f27d7066d26f4675be879f1facacd67d'], ['XM', '2009~2014', null]],
+  '카니발': [['KA4', '2020~', S_('카니발')], ['YP', '2014~2020', 'b3198efa87e04e87931ebca9b92fb3e9'], ['VQ', '2006~2014', '855c464351f244cbaafa8269a5d472df']],
+  'EV3': [['SV1', '2024~', S_('EV3')]],
+  'EV6': [['CV', '2021~', S_('EV6')]],
+  'EV9': [['MV', '2023~', S_('EV9')]],
+  '타스만': [['TK', '2025~', S_('타스만')]],
+  'G70': [['IK', '2017~', S_('G70')]],
+  'G80': [['RG3', '2020~', S_('G80')], ['DH', '2016~2020', null]],
+  'G90': [['RS4', '2022~', null], ['HI', '2015~2022', S_('G90')]],
+  'GV60': [['JW', '2021~', S_('GV60')]],
+  'GV70': [['JK1', '2020~', S_('GV70')]],
+  'GV80': [['JX1', '2020~', S_('GV80')]],
+  '티볼리': [['X100', '2015~', S_('티볼리')]],
+  '액티언': [['J120', '2024~', S_('액티언')]],
+  '토레스': [['J100', '2022~', S_('토레스')]],
+  '렉스턴': [['Y400 (G4 렉스턴)', '2017~', '1215afceaf8d47dd97d827c0a63c8f6b'], ['Y200', '2001~2017', S_('렉스턴')]],
+  '렉스턴 스포츠': [['Q200', '2018~', S_('렉스턴 스포츠')]],
+  '아르카나': [['1세대 (XM3)', '2020~', S_('아르카나')]],
+  '그랑 콜레오스': [['1세대', '2024~', S_('그랑 콜레오스')]],
+  '트랙스 크로스오버': [['2세대 (크로스오버)', '2023~', S_('트랙스 크로스오버')], ['트랙스 (1세대)', '2013~2022', '76e12f46be1743c591ac01544fb97399']],
+  '트레일블레이저': [['1세대', '2020~', S_('트레일블레이저')]],
+  '5시리즈': [['G60', '2023~', 'ee328c2302494193a05cb4949b17ae55'], ['G30', '2017~2023', S_('5시리즈')], ['F10', '2010~2017', '9eac54389f0541aba2dfd9c30d1cd5b7']],
+  'X5': [['G05', '2018~', S_('X5')], ['F15', '2013~2018', 'a2e7d663902e4be7bd170fdb9f333ad8']],
+  'E-클래스': [['W214', '2023~', '471ae365d79c488399ec04ca2c5bc51b'], ['W213', '2016~2023', S_('E-클래스')], ['W212', '2009~2016', 'e86ac95cbfa1448b8246950450757a0d']],
+  'GLC': [['X254', '2022~', '8f74d836e6c74d9883aadf9001bed546'], ['X253', '2015~2022', S_('GLC')]],
+  '모델 3': [['하이랜드', '2023~', '61ddcbdbd3854c239e0c95bf60b00022'], ['초기형', '2019~2023', S_('모델 3')]],
+  '모델 Y': [['주니퍼', '2025~', S_('모델 Y')], ['초기형', '2021~2025', 'e0f703b823e74746b40634d1876f6a13']],
+  'XC60': [['2세대', '2017~', S_('XC60')], ['1세대', '2008~2017', null]],
+  'ES': [['XV70 (7세대)', '2018~', S_('ES')], ['XV60 (6세대)', '2012~2018', null]],
+};
+const gensOf = name => GENS[name] || [['현행', '', S_(name)]];
+// 고른 세대의 모델. 없으면 현행(신차) 모델로, 현행에도 없으면 가장 가까운 세대 모델로 대신 보여 줌
+function resolveGen(name, i) {
+  const g = gensOf(name), [code, years, uid] = g[i];
+  const out = { name, code, years, current: i === 0, uid, from: null };
+  if (!uid) {
+    const order = g.map((x, j) => j).filter(j => g[j][2]).sort((a, b) => (a === 0 ? -1 : b === 0 ? 1 : Math.abs(a - i) - Math.abs(b - i)));
+    if (order.length) { out.uid = g[order[0]][2]; out.from = g[order[0]][0]; }
+  }
+  return out;
+}
 const sfEl = document.getElementById('sfModel');
 const modelNote = document.getElementById('modelNote');
 const flipBtn = document.getElementById('flipBtn');
@@ -1243,17 +1378,32 @@ let preferReal = true;   // 실제 모델이 있으면 실제 모델로 보여 �
 let mode = 'proc';       // 'real' 실제 모델(Sketchfab) · 'proc' 단순 모델 · 'glb' 불러온 파일
 let sf = null;           // { api, uid, calib }
 let sfToken = 0;
-const curName = () => CARS[brandSel.value][+modelSel.value][0];
 
-function showSF(name) {
-  const m = SF[name];
+function showSF(sel) {
+  const m = sel.uid && MODEL[sel.uid];
   realBtn.disabled = !m;
-  if (!m) { sfEl.innerHTML = '이 차종은 쓸 만한 무료 실제 모델이 없어 단순 모델로 보여 줍니다.'; return; }
-  const [uid, title, author, lic, , note] = m;
+  if (!m) { sfEl.innerHTML = '이 차종은 쓸 만한 실제 모델이 없어 단순 모델로 보여 줍니다.'; return; }
+  const [title, author, lic, note] = m;
   const nc = lic.includes('NC') ? ' · 비상업용만' : '';
+  const sub = sel.from ? `<br><span class="warn">${sel.code} 세대의 3D 모델이 없어 ${sel.from} 모델로 보여 줍니다. 외형이 다를 수 있습니다.</span>` : '';
   sfEl.innerHTML = `<b>실제 모델</b> ${title}<br>작성자 ${author} · ${lic}${nc}` +
-    (note ? `<br><span class="warn">${note}</span>` : '') +
-    `<br><a href="https://sketchfab.com/3d-models/${uid}" target="_blank" rel="noopener">Sketchfab에서 보기</a>`;
+    (note ? `<br><span class="warn">${note}</span>` : '') + sub +
+    `<br><a href="https://sketchfab.com/3d-models/${sel.uid}" target="_blank" rel="noopener">Sketchfab에서 보기</a>`;
+}
+// 신차·중고차 구분과 시세 검색 링크
+function showMarket(brand, sel) {
+  const q = s => 'https://search.naver.com/search.naver?query=' + encodeURIComponent(s);
+  const code = sel.code.replace(/\s*\(.*\)/, '');
+  const name = `${brand} ${sel.name}`;
+  document.getElementById('market').innerHTML =
+    `<b>${sel.code}</b> · ${sel.years}<br>` +
+    (sel.current
+      ? '<span class="badge new">신차 판매 중</span>중고차로도 거래되는 현행 세대입니다.'
+      : '<span class="badge used">단종</span>지금은 중고차로만 살 수 있는 이전 세대입니다.') +
+    (sel.current ? '' : '<br><span class="hint">위 제원은 현행 모델 기준입니다.</span>') +
+    '<div class="links">' +
+    (sel.current ? `<a href="${q(name + ' 가격표')}" target="_blank" rel="noopener">신차 가격 보기</a>` : '') +
+    `<a href="${q(name + ' ' + code + ' 중고차 시세')}" target="_blank" rel="noopener">중고차 시세 보기</a></div>`;
 }
 function setMode(m, note) {
   mode = m;
@@ -1430,14 +1580,15 @@ function sfFly(p, t, ms) {
   sf.api.setEnableCameraConstraints(false, {}, () => sf && sf.api.setCameraLookAt(toWorld(p), toWorld(t), ms / 1000));
 }
 
-function startReal(name) {
-  const m = SF[name];
+function startReal(sel) {
+  const uid = sel && sel.uid, m = uid && MODEL[uid];
   stopSF();
   if (!m || !window.Sketchfab) {
     setMode('proc', m ? '실제 모델 뷰어를 불러오지 못했습니다. 인터넷 연결을 확인해 주세요.' : undefined);
     return;
   }
-  const token = sfToken, [uid, title, author, lic] = m;
+  const token = sfToken, [title, author, lic] = m;
+  const subNote = sel.from ? `${sel.code} 세대 모델이 없어 ${sel.from} 모델로 보여 줍니다. ` : '';
   setMode('real', '실제 모델을 불러오는 중입니다…');
   sfStatus.textContent = '실제 모델 불러오는 중…'; sfStatus.classList.add('show');
   creditEl.textContent = `${title} · ${author} · ${lic} · Sketchfab`;
@@ -1453,28 +1604,28 @@ function startReal(name) {
         sf = { api, uid, calib: null };
         // 작성자가 걸어 둔 카메라 제한(좌우 회전 범위·최소 거리)을 풀어 360도 돌려 볼 수 있게 함
         try { await sfCall(api, 'setEnableCameraConstraints', false, {}); } catch {}
-        if (SF_NOCAM.has(name)) {
+        if (!CALIB_OK.has(uid)) {
           // 작성자 시점이 너무 가까우면 돌릴 때 차 안으로 들어가므로 모델 전체가 보이도록 다시 맞춤
           try { await sfCall(api, 'recenterCamera'); } catch {}
           await wait(1200);
           try { await sfCall(api, 'setEnableCameraConstraints', false, {}); } catch {}
           sfStatus.classList.remove('show');
-          setMode('real', '이 모델은 작성자가 정한 기본 시점으로 보여 줍니다. 카메라 프리셋은 지원하지 않으며 마우스로 돌려 볼 수 있습니다.');
+          setMode('real', subNote + '이 모델은 작성자가 정한 기본 시점으로 보여 줍니다. 카메라 프리셋은 지원하지 않으며 마우스로 360도 돌려 볼 수 있습니다.');
           return;
         }
         sfStatus.textContent = '차량 방향 측정 중…';
         // 작성자가 걸어 둔 카메라 제한(최소 거리·각도)이 있으면 측정과 프리셋이 막히므로 해제
         try { await sfCall(api, 'setEnableCameraConstraints', false, {}); } catch {}
         try { sf.calib = await calibrate(api); } catch (e) { console.warn('calibrate failed', e); }
-        if (sf.calib && SF_FLIP.has(name)) sf.calib.F = neg(sf.calib.F);   // 자동 판정이 틀리는 모델 보정
+        if (sf.calib && FLIP_UID.has(uid)) sf.calib.F = neg(sf.calib.F);   // 자동 판정이 틀리는 모델 보정
         try { await sfCall(api, 'setFov', camera.fov); } catch {}
         try { await sfCall(api, 'setEnableCameraConstraints', false, {}); } catch {}
         await wait(200);
         if (token !== sfToken) return;
         sfStatus.classList.remove('show');
-        setMode('real', sf.calib
+        setMode('real', subNote + (sf.calib
           ? "카메라 프리셋은 모델의 방향을 자동으로 측정해 맞춥니다. 앞뒤가 반대면 '방향 뒤집기'를 누르세요."
-          : '이 모델은 방향 측정에 실패해 카메라 프리셋이 동작하지 않습니다. 마우스로 돌려 보세요.');
+          : '이 모델은 방향 측정에 실패해 카메라 프리셋이 동작하지 않습니다. 마우스로 돌려 보세요.'));
         if (sf.calib) {
           // 큰 모델은 텍스처를 마저 불러오면서 카메라를 처음 위치로 되돌리는 경우가 있어, 사용자가 움직이지 않았으면 한 번 더 이동
           runCommand('<rotate: overall (full, eye-level, medium)>');
@@ -1541,7 +1692,7 @@ flipBtn.onclick = () => {
   if (mode === 'real' && sf && sf.calib) { sf.calib.F = neg(sf.calib.F); runCommand('<rotate: overall (full, eye-level, medium)>'); }
 };
 document.getElementById('glb').onchange = e => { loadGLB(e.target.files[0]); e.target.value = ''; };
-realBtn.onclick = () => { preferReal = true; clearGLB(); startReal(curName()); };
+realBtn.onclick = () => { preferReal = true; clearGLB(); startReal(curSel()); };
 procBtn.onclick = () => {
   preferReal = false; clearGLB(); stopSF(); setMode('proc');
   flyTo(cameraPose('overall', 'full', 'eye-level'), 900);
