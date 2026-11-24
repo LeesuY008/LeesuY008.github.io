@@ -50,11 +50,27 @@ def data_go_file(pk):
     return raw, info["dataSetFileDetailInfo"]["dataNm"]
 
 
+def _without_updated(obj):
+    o = dict(obj)
+    if isinstance(o.get("meta"), dict):
+        o["meta"] = {k: v for k, v in o["meta"].items() if k != "updated"}
+    return o
+
+
 def write_json(path, obj):
+    """임시 파일에 쓴 뒤 교체. 갱신 날짜 말고는 같으면 쓰지 않고 False."""
+    if os.path.exists(path):
+        try:
+            with open(path, encoding="utf-8") as f:
+                if _without_updated(json.load(f)) == _without_updated(obj):
+                    return False
+        except ValueError:
+            pass
     tmp = path + ".tmp"
     with open(tmp, "w", encoding="utf-8") as f:
         json.dump(obj, f, ensure_ascii=False, separators=(",", ":"))
     os.replace(tmp, path)
+    return True
 
 
 def meta(*names):
@@ -109,11 +125,26 @@ def build_nurseries():
     return {"meta": meta(nm), "items": items}
 
 
+def _phone_count(obj):
+    return sum(1 for rows in obj["by_region"].values() for r in rows if r.get("tel"))
+
+
+def check_not_worse(old_path, new):
+    """새로 받은 전화번호 수가 기존의 80% 미만이면 실패 (해외 IP 차단 등으로 일부만 받힌 경우)"""
+    if not os.path.exists(old_path):
+        return
+    with open(old_path, encoding="utf-8") as f:
+        old = _phone_count(json.load(f))
+    if _phone_count(new) < old * 0.8:
+        raise RuntimeError(f"{os.path.basename(old_path)}: 전화번호 {old} → {_phone_count(new)}개로 줄어 갱신 안 함")
+
+
 def run_static(out_dir):
     results = {"contacts.json": build_contacts(), "stores.json": build_stores(), "nurseries.json": build_nurseries()}
+    for name in ("contacts.json", "stores.json"):
+        check_not_worse(os.path.join(out_dir, name), results[name])
     for name, obj in results.items():  # 전부 성공한 뒤에만 쓴다
-        write_json(os.path.join(out_dir, name), obj)
-        print(name, "저장")
+        print(name, "저장" if write_json(os.path.join(out_dir, name), obj) else "변경 없음")
 
 
 def main(argv):
@@ -156,11 +187,11 @@ def run_gap(out_dir):
     with open(os.path.join(out_dir, "crops.json"), encoding="utf-8") as f:
         crops = json.load(f)
     by_crop = summarize_gap(rows, crops)
-    write_json(os.path.join(out_dir, "gap.json"), {
+    changed = write_json(os.path.join(out_dir, "gap.json"), {
         "meta": {"sources": [src["name"]], "as_of": as_of, "updated": datetime.now(KST).strftime("%Y-%m-%d"),
                  "rows": len(rows)},
         "by_crop": by_crop})
-    print("gap.json 저장:", as_of, len(rows), "행,", len(by_crop), "작물")
+    print("gap.json", "저장" if changed else "변경 없음", as_of, len(rows), "행,", len(by_crop), "작물")
     return 0
 
 

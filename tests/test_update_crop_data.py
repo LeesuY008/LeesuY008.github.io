@@ -30,6 +30,27 @@ class T(unittest.TestCase):
         finally:
             u.http = old
 
+    def test_write_json_skips_when_only_updated_date_differs(self):
+        with tempfile.TemporaryDirectory() as d:
+            path = os.path.join(d, "x.json")
+            u.write_json(path, {"meta": {"updated": "2026-11-01"}, "v": 1})
+            self.assertFalse(u.write_json(path, {"meta": {"updated": "2026-11-24"}, "v": 1}))
+            with open(path, encoding="utf-8") as f:
+                self.assertIn("2026-11-01", f.read())
+            self.assertTrue(u.write_json(path, {"meta": {"updated": "2026-11-24"}, "v": 2}))
+
+    def test_guard_rejects_big_drop_in_phones(self):
+        old = {"by_region": {"경북": [{"tel": "054-1"}] * 10}}
+        worse = {"by_region": {"경북": [{"tel": "054-1"}] * 5 + [{"tel": ""}] * 5}}
+        same = {"by_region": {"경북": [{"tel": "054-1"}] * 9 + [{"tel": ""}]}}
+        with tempfile.TemporaryDirectory() as d:
+            path = os.path.join(d, "contacts.json")
+            u.write_json(path, old)
+            with self.assertRaises(RuntimeError):
+                u.check_not_worse(path, worse)
+            u.check_not_worse(path, same)
+            u.check_not_worse(os.path.join(d, "none.json"), worse)
+
 
 if __name__ == "__main__":
     unittest.main()

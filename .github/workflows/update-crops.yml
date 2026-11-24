@@ -1,0 +1,63 @@
+name: 농산물 판매처 데이터 자동 업데이트
+
+on:
+  schedule:
+    # 매주 월요일 10:00 (한국 시간) = 월요일 01:00 UTC
+    - cron: "0 1 * * 1"
+  workflow_dispatch:   # Actions 탭에서 수동 실행
+    inputs:
+      static:
+        description: "문의처·직매장·업체 목록도 갱신"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+  pages: write
+
+concurrency:
+  group: crops-data
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: 테스트
+        run: python3 -m unittest discover tests
+
+      - name: GAP 인증 현황 받기 (매주)
+        run: python3 scripts/update_crop_data.py data/crops
+
+      - name: 문의처·직매장·업체 목록 받기 (매월 첫 주 또는 수동)
+        # 기관 홈페이지가 해외 IP를 막아도 GAP 갱신은 커밋되도록
+        continue-on-error: true
+        if: ${{ inputs.static || github.event_name == 'schedule' }}
+        run: |
+          if [ "${{ inputs.static }}" != "true" ] && [ "$(date -u +%d)" -gt 7 ]; then
+            echo "이번 주는 건너뜀 (매월 첫 주만 실행)"
+            exit 0
+          fi
+          python3 scripts/update_crop_data.py data/crops --static
+
+      - name: 바뀐 내용이 있으면 커밋
+        run: |
+          if git diff --quiet -- data/crops; then
+            echo "변경 없음"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/crops
+          git commit -m "농산물 판매처 데이터 자동 업데이트"
+          git pull --rebase
+          git push
+          gh api -X POST "repos/${{ github.repository }}/pages/builds" || true
+        env:
+          GH_TOKEN: ${{ github.token }}
