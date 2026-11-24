@@ -65,7 +65,7 @@
 <div class="wrap">
   <nav class="topnav" aria-label="페이지 이동">
     <button type="button" id="navBack">← 뒤로가기</button>
-    <a href="index.html" id="navHome">⌂ 첫 페이지</a>
+    <button type="button" id="navHome">⌂ 첫 페이지</button>
   </nav>
   <h1>농산물 판매처 찾기</h1>
   <p class="sub">작물을 고르면 사진과 주산지, GAP 인증 산지, 로컬푸드 직매장, 씨앗·묘목 업체, 지역 농업기술센터 연락처를 보여줍니다.
@@ -300,6 +300,18 @@ function fillSigungu() {
   $("#q").oninput = () => { show(""); renderGrid(); writeHash(); };
   $("#grid").onclick = (e) => { const b = e.target.closest(".crop"); if (b) { show(b.dataset.key); writeHash(true); } };
   $("#back").onclick = () => { show(""); writeHash(true); };
+  // 첫 페이지: 검색어·분류·지역을 모두 지우고 작물 목록으로
+  $("#navHome").onclick = () => {
+    $("#q").value = "";
+    cat = "전체";
+    $("#cats").querySelectorAll(".chip").forEach((b) => b.classList.toggle("active", b.textContent === cat));
+    $("#sido").value = "";
+    fillSigungu();
+    show("");
+    renderGrid();
+    writeHash(true);
+    window.scrollTo({ top: 0 });
+  };
   // 뒤로가기: 이 페이지 안에서 이동한 기록이 있거나 사이트 안에서 들어왔으면 이전 화면, 아니면 첫 페이지
   $("#navBack").onclick = () => {
     const fromSite = document.referrer && new URL(document.referrer).origin === location.origin;
